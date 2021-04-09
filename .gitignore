@@ -11,5 +11,8 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Torrent files used for testing
+*.torrent
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
