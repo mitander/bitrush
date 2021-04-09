@@ -1,10 +1,9 @@
 package torrentfile
 
 import (
-	"fmt"
-	"io/ioutil"
+	"os"
 
-	bencode "github.com/IncSW/go-bencode"
+	bencode "github.com/jackpal/bencode-go"
 )
 
 type bencodeTorrent struct {
@@ -20,17 +19,17 @@ type bencodeInfo struct {
 }
 
 func Open(path string) (bencodeTorrent, error) {
-	file, err := ioutil.ReadFile(path)
+	file, err := os.Open(path)
+	if err != nil {
+		return bencodeTorrent{}, err
+	}
+	defer file.Close()
+
+	bct := bencodeTorrent{}
+	err = bencode.Unmarshal(file, &bct)
 	if err != nil {
 		return bencodeTorrent{}, err
 	}
 
-	tor := bencodeTorrent{}
-
-	val, err := bencode.Unmarshal(file)
-	if err != nil {
-		return bencodeTorrent{}, err
-	}
-	fmt.Println(val)
-	return tor, nil
+	return bct, nil
 }

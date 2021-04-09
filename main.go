@@ -11,10 +11,9 @@ import (
 func main() {
 	inPath := os.Args[1]
 
-	tor, err := torrentfile.Open(inPath)
+	bct, err := torrentfile.Open(inPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(tor)
+	fmt.Println(bct)
 }
