@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var write = flag.Bool("update", true, "overwrites json files")
+var write = flag.Bool("write", true, "overwrites json files")
 
 func TestOpenFile(t *testing.T) {
 	torrentPath := "./testdata/debian-10.9.0-amd64-netinst.iso.torrent"
