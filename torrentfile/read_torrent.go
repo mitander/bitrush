@@ -49,7 +49,7 @@ func OpenFile(path string) (TorrentFile, error) {
 func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 	infoHash, pieceHashes, err := bct.Info.hashInfo()
 	if err != nil {
-		fmt.Println(err)
+		return TorrentFile{}, err
 	}
 
 	tf := TorrentFile{
