@@ -21,10 +21,10 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 	peers := make([]Peer, count)
 	for i := 0; i < count; i++ {
 		offset := i * count
-		start := offset + 4
-		end := offset + 6
-		peers[i].IP = net.IP(bin[offset:end])
-		peers[i].Port = binary.BigEndian.Uint16([]byte(bin[start:end]))
+		ip := offset + 4   // bin[offset:ip] is IP
+		port := offset + 6 // bin[ip:port] is Port
+		peers[i].IP = net.IP(bin[offset:ip])
+		peers[i].Port = binary.BigEndian.Uint16([]byte(bin[ip:port]))
 	}
 	return peers, nil
 }
