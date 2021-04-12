@@ -21,10 +21,11 @@ func (tf *TorrentFile) parseTrackerUrl(peerID [20]byte, port uint16) (string, er
 		return "", err
 	}
 
+	// url.Values requires map[]string
 	p := url.Values{
 		"info_hash":  []string{string(tf.InfoHash[:])},
 		"peer_id":    []string{string(peerID[:])},
-		"port":       []string{strconv.Itoa(int(Port))},
+		"port":       []string{strconv.Itoa(int(port))},
 		"uploaded":   []string{"0"},
 		"downloaded": []string{"0"},
 		"compact":    []string{"1"},
