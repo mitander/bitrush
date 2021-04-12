@@ -9,6 +9,8 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 )
 
+const Port = 6889
+
 type TorrentFile struct {
 	Announce    string
 	InfoHash    [20]byte
