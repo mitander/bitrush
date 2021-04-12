@@ -37,7 +37,7 @@ func (tf *TorrentFile) parseTrackerUrl(peerID [20]byte, port uint16) (string, er
 
 }
 
-func (tf *TorrentFile) reqPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
+func (tf *TorrentFile) ReqPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
 	u, err := tf.parseTrackerUrl(peerID, port)
 	if err != nil {
 		return nil, err
