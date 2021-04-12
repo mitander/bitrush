@@ -9,7 +9,7 @@ import (
 )
 
 // http://www.bittorrent.org/beps/bep_0020.html
-var peerIDPrefix = []byte("-RN0001-")
+var peerIDPrefix = []byte("-BR0001-")
 
 type PeerID [20]byte
 
