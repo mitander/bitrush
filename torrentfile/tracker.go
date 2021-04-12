@@ -38,13 +38,13 @@ func (tf *TorrentFile) parseTrackerUrl(peerID [20]byte, port uint16) (string, er
 }
 
 func (tf *TorrentFile) reqPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
-	url, err := tf.parseTrackerUrl(peerID, port)
+	u, err := tf.parseTrackerUrl(peerID, port)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &http.Client{Timeout: 15 * time.Second}
-	res, err := c.Get(url)
+	res, err := c.Get(u)
 	if err != nil {
 		return nil, err
 	}
