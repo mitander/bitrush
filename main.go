@@ -1,26 +1,52 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/mitander/bitrush/peers"
 	"github.com/mitander/bitrush/torrentfile"
 )
 
+var (
+	from  = flag.String("f", "", "open .torrent file")
+	where = flag.String("w", ".", "download location")
+	debug = flag.Bool("d", false, "enable debug mode")
+)
+
 func main() {
-	inPath := os.Args[1]
+	flag.Parse()
 
-	tf, err := torrentfile.OpenFile(inPath)
-	if err != nil {
-		log.Fatal(err)
+	if *debug {
+		fmt.Println("Debug enabled")
+		// TODO: implement logger
 	}
 
-	peerID := [20]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-	peers, err := tf.ReqPeers(peerID, torrentfile.Port)
-	if err != nil {
-		log.Fatal(err)
+	if *from != "" {
+
+		tf, err := torrentfile.OpenFile(*from)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		peerID, err := peers.GeneratePeerID()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		peers, err := tf.ReqPeers(peerID, torrentfile.Port)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, peer := range peers {
+			fmt.Println(peer)
+		}
 	}
 
-	fmt.Println(peers)
+	fmt.Println("No torrent file selected, use -f to select")
+	fmt.Println("Exiting")
+	os.Exit(0)
 }
