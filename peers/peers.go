@@ -21,7 +21,7 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 	}
 	peers := make([]Peer, count)
 	for i := 0; i < count; i++ {
-		offset := i * count
+		offset := i * size
 		ip := offset + 4   // bin[offset:ip] is IP
 		port := offset + 6 // bin[ip:port] is Port
 		peers[i].IP = net.IP(bin[offset:ip])
@@ -31,5 +31,5 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 }
 
 func (p Peer) String() string {
-	return net.JoinHostPort(p.IP.String(), strconv.FormatInt(int64(p.Port), 64))
+	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
 }
