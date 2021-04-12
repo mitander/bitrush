@@ -9,7 +9,7 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 )
 
-const Port = 6889
+const Port uint16 = 6889
 
 type TorrentFile struct {
 	Announce    string
