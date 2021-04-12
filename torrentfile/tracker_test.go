@@ -24,7 +24,7 @@ func TestParseTrackerUrl(t *testing.T) {
 		Length:      351272960,
 		Name:        "test.iso",
 	}
-	url, err := tf.ParseTrackerUrl(peerID, port)
+	url, err := tf.parseTrackerUrl(peerID, port)
 	expected := "http://test.tracker.org:6969/announce?compact=1&downloaded=0&info_hash=%94f%D5U%AE%F6%92~%7F%F6U%0F%16%06%BA%80%DCi%0C%0F&left=351272960&peer_id=%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14&port=6888&uploaded=0"
 	assert.Nil(t, err)
 	assert.Equal(t, url, expected)
@@ -60,7 +60,7 @@ func TestRequestPeers(t *testing.T) {
 		{IP: net.IP{192, 0, 2, 210}, Port: 6888},
 		{IP: net.IP{127, 0, 0, 21}, Port: 6889},
 	}
-	p, err := tf.reqPeers(peerID, port)
+	p, err := tf.ReqPeers(peerID, port)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, p)
 }
