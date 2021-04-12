@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strconv"
 )
 
 type Peer struct {
@@ -27,4 +28,8 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 		peers[i].Port = binary.BigEndian.Uint16([]byte(bin[ip:port]))
 	}
 	return peers, nil
+}
+
+func (p Peer) String() string {
+	return net.JoinHostPort(p.IP.String(), strconv.FormatInt(int64(p.Port), 64))
 }
