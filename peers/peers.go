@@ -1,11 +1,17 @@
 package peers
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
 )
+
+// http://www.bittorrent.org/beps/bep_0020.html
+var peerIDPrefix = []byte("-RN0001-")
+
+type PeerID [20]byte
 
 type Peer struct {
 	IP   net.IP
@@ -32,4 +38,11 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 
 func (p Peer) String() string {
 	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
+}
+
+func GeneratePeerID() (PeerID, error) {
+	var id PeerID
+	copy(id[:], peerIDPrefix)
+	_, err := rand.Read(id[len(peerIDPrefix):])
+	return id, err
 }
