@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/mitander/bitrush/peers"
 	"github.com/mitander/bitrush/torrentfile"
 )
 
@@ -25,25 +24,16 @@ func main() {
 	}
 
 	if *from != "" {
-
 		tf, err := torrentfile.OpenFile(*from)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		peerID, err := peers.GeneratePeerID()
+		err = tf.Download(".")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		peers, err := tf.ReqPeers(peerID, torrentfile.Port)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, peer := range peers {
-			fmt.Println(peer)
-		}
 	}
 
 	fmt.Println("No torrent file selected, use -f to select")

@@ -37,11 +37,12 @@ func (t *Torrent) Download() ([]byte, error) {
 		length := end - begin
 		queue <- &pieceWork{index, hash, length}
 	}
-	for peer := range t.Peers {
-		fmt.Println("start worker for: ", peer)
-	}
+	//for peer := range t.Peers {
+	//	//fmt.Println("start worker for: ", peer)
+	//}
 
 	buf := make([]byte, t.Length)
+	fmt.Println(buf)
 	donePieces := 0
 	for donePieces < len(hashes) {
 		res := <-results
