@@ -54,15 +54,14 @@ func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 		return TorrentFile{}, err
 	}
 
-	tf := TorrentFile{
+	return TorrentFile{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
 		PieceLength: bct.Info.PieceLength,
 		Length:      bct.Info.Length,
 		Name:        bct.Info.Name,
-	}
-	return tf, nil
+	}, nil
 
 }
 
