@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitander/bitrush/bitfield"
 	"github.com/mitander/bitrush/handshake"
+	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
 )
 
@@ -68,4 +69,34 @@ func doHandshake(conn net.Conn, infohash, peerID [20]byte) error {
 		return fmt.Errorf("Invalid infohash recieved: %x - expected: %x", res.InfoHash, infohash)
 	}
 	return nil
+}
+
+func (c *Client) SendRequest(index, begin, length int) error {
+	req := message.FormatRequest(index, begin, length)
+	_, err := c.Conn.Write(req.Serialize())
+	return err
+}
+
+func (c *Client) SendInterested() error {
+	msg := message.Message{ID: message.MsgInterested}
+	_, err := c.Conn.Write(msg.Serialize())
+	return err
+}
+
+func (c *Client) SendNotInterested() error {
+	msg := message.Message{ID: message.MsgNotInterested}
+	_, err := c.Conn.Write(msg.Serialize())
+	return err
+}
+
+func (c *Client) SendUnchoke() error {
+	msg := message.Message{ID: message.MsgUnchoke}
+	_, err := c.Conn.Write(msg.Serialize())
+	return err
+}
+
+func (c *Client) SendHave(index int) error {
+	msg := message.FormatHave(index)
+	_, err := c.Conn.Write(msg.Serialize())
+	return err
 }
