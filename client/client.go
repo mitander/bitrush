@@ -15,7 +15,7 @@ import (
 type Client struct {
 	Conn     net.Conn
 	Choked   bool
-	Bitfield []byte
+	Bitfield bitfield.Bitfield
 	peer     peers.Peer
 	infoHash [20]byte
 	peerID   [20]byte
@@ -72,7 +72,7 @@ func doHandshake(conn net.Conn, infohash, peerID [20]byte) error {
 }
 
 func (c *Client) SendRequest(index, begin, length int) error {
-	req := message.FormatRequest(index, begin, length)
+	req := message.FormatRequestMsg(index, begin, length)
 	_, err := c.Conn.Write(req.Serialize())
 	return err
 }
@@ -96,7 +96,7 @@ func (c *Client) SendUnchoke() error {
 }
 
 func (c *Client) SendHave(index int) error {
-	msg := message.FormatHave(index)
+	msg := message.FormatHaveMsg(index)
 	_, err := c.Conn.Write(msg.Serialize())
 	return err
 }
