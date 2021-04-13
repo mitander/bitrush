@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/mitander/bitrush/bitfield"
 	"github.com/mitander/bitrush/handshake"
 	"github.com/mitander/bitrush/peers"
 )
@@ -32,7 +33,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 		return nil, err
 	}
 
-	bf, err := bitfield.recvBitfield(conn)
+	bf, err := bitfield.RecvBitfield(conn)
 	if err != nil {
 		conn.Close()
 		return nil, err

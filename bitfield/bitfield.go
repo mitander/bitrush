@@ -30,7 +30,7 @@ func (bf Bitfield) SetPiece(index int) {
 	bf[byteIndex] |= 1 << uint(7-offset)
 }
 
-func recvBitfield(conn net.Conn) (Bitfield, error) {
+func RecvBitfield(conn net.Conn) (Bitfield, error) {
 	// set deadline to fail instead of blocking after 3 seconds
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 	defer conn.SetDeadline(time.Time{})
