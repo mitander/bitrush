@@ -7,12 +7,23 @@ import (
 	"os"
 
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/mitander/bitrush/peers"
 )
 
 const Port uint16 = 6889
 
 type TorrentFile struct {
 	Announce    string
+	InfoHash    [20]byte
+	PieceHashes [][20]byte
+	PieceLength int
+	Length      int
+	Name        string
+}
+
+type Torrent struct {
+	Peers       []peers.Peer
+	PeerID      [20]byte
 	InfoHash    [20]byte
 	PieceHashes [][20]byte
 	PieceLength int
@@ -30,6 +41,27 @@ type bencodeInfo struct {
 	Length      int    `bencode:"length"`
 	Pieces      string `bencode:"pieces"`
 	PieceLength int    `bencode:"piece length"`
+}
+
+func (tf *TorrentFile) Download(path string) error {
+	peerID, err := peers.GeneratePeerID()
+	if err != nil {
+		return err
+	}
+
+	peers, err := tf.ReqPeers(peerID, Port)
+
+	_ = Torrent{
+		Peers:       peers,
+		PeerID:      peerID,
+		InfoHash:    tf.InfoHash,
+		PieceHashes: tf.PieceHashes,
+		PieceLength: tf.PieceLength,
+		Length:      tf.Length,
+		Name:        tf.Name,
+	}
+	// TODO: implement torrent Download
+	return nil
 }
 
 func OpenFile(path string) (TorrentFile, error) {
