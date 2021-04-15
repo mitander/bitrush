@@ -48,10 +48,10 @@ func FormatHaveMsg(index int) *Message {
 
 func ParseHaveMsg(msg *Message) (int, error) {
 	if msg.ID != MsgHave {
-		return 0, fmt.Errorf("Invalid messageID - input: %d expected: %d", MsgHave, msg.ID)
+		return 0, fmt.Errorf("parsing have message failed: message id (id:%d - expected: %d)", MsgHave, msg.ID)
 	}
 	if len(msg.Payload) != 4 {
-		return 0, fmt.Errorf("Invalid payload length - input: %d expected: 4", len(msg.Payload))
+		return 0, fmt.Errorf("parsing have message failed: payload length (input: %d - expected: 4)", len(msg.Payload))
 	}
 	index := int(binary.BigEndian.Uint32(msg.Payload))
 	return index, nil
@@ -59,22 +59,22 @@ func ParseHaveMsg(msg *Message) (int, error) {
 
 func ParsePieceMsg(index int, buf []byte, msg *Message) (int, error) {
 	if msg.ID != MsgPiece {
-		return 0, fmt.Errorf("Invalid Message - input:%d expected:%d", MsgPiece, msg.ID)
+		return 0, fmt.Errorf("parsing piece message failed: message id (id:%d - expected:%d)", MsgPiece, msg.ID)
 	}
 	if len(msg.Payload) < 8 {
-		return 0, fmt.Errorf("Invalid payload length - input: %d expected: 8", len(msg.Payload))
+		return 0, fmt.Errorf("parsing piece message failed: payload length - (id: %d - expected: 8)", len(msg.Payload))
 	}
 	parsedIndex := int(binary.BigEndian.Uint32(msg.Payload[0:4]))
 	if parsedIndex != index {
-		return 0, fmt.Errorf("Invalid index - input: %d expected: %d", index, parsedIndex)
+		return 0, fmt.Errorf("parsing piece message failed: invalid index (index: %d - expected: %d)", index, parsedIndex)
 	}
 	begin := int(binary.BigEndian.Uint32(msg.Payload[4:8]))
 	if begin >= len(buf) {
-		return 0, fmt.Errorf("Invalid offset - input:%d expected: %d or above", begin, len(buf))
+		return 0, fmt.Errorf("parsing piece message failed: invalid buffer length (begin:%d - expected: %d)", begin, len(buf))
 	}
 	data := msg.Payload[8:]
 	if begin+len(data) > len(buf) {
-		return 0, fmt.Errorf("Invalid data length: %d with offset: %d and length: %d", len(data), begin, len(buf))
+		return 0, fmt.Errorf("parsing piece message failed: invalid data length (data:%d - expected: %d)", data, len(buf))
 	}
 	copy(buf[begin:], data)
 	return len(data), nil
@@ -137,7 +137,7 @@ func (msg *Message) name() string {
 	case MsgCancel:
 		return "Cancel"
 	default:
-		return fmt.Sprintf("Invalid MessageID - input: %d expected: 0-9", msg.ID)
+		return fmt.Sprintf("parse message name: invalid id [id: %d] - [expected: 0-9]", msg.ID)
 	}
 }
 

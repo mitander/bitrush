@@ -22,7 +22,7 @@ type Client struct {
 }
 
 func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
-	// set dial timeout to 3 seconds
+	// should not take more than 3 seconds to establish connection
 	conn, err := net.DialTimeout("tcp", peer.String(), 3*time.Second)
 	if err != nil {
 		return nil, err
@@ -51,22 +51,26 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 }
 
 func doHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Handshake, error) {
-	// set deadline to fail instead of blocking after 3 seconds
+	// should not take more than 3 seconds to complete handshake
 	conn.SetDeadline(time.Now().Add(3 * time.Second))
 	defer conn.SetDeadline(time.Time{})
 
+	// create new handshake
 	hs := handshake.New(infohash, peerID)
+
+	// write to connection
 	_, err := conn.Write(hs.Serialize())
 	if err != nil {
-		return nil, fmt.Errorf("sending to connection failed")
+		return nil, fmt.Errorf("handshake failed: writing connection")
 	}
-
+	// read from connection
 	res, err := handshake.Read(conn)
 	if err != nil {
-		return nil, fmt.Errorf("read handshake failed")
+		return nil, fmt.Errorf("handshake failed: reading connection")
 	}
+	// compare info-hashes
 	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
-		return nil, fmt.Errorf("Invalid infohash recieved: %x - expected: %x", res.InfoHash, infohash)
+		return nil, fmt.Errorf("handshake failed: invalid infohash (recieved: %x - expected: %x)", res.InfoHash, infohash)
 	}
 	return res, nil
 }

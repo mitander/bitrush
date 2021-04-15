@@ -22,7 +22,7 @@ func Unmarshal(bin []byte) ([]Peer, error) {
 	const size = 6           // peer size - 4 for ip, 2 for port
 	count := len(bin) / size // number of peers
 	if len(bin)%size != 0 {
-		err := fmt.Errorf("Invalid peers length")
+		err := fmt.Errorf("peer unmarshal failed: bin empty (bin: %d)", len(bin))
 		return nil, err
 	}
 	peers := make([]Peer, count)

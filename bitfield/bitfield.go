@@ -23,7 +23,6 @@ func (bf Bitfield) SetPiece(index int) {
 	byteIndex := index / 8
 	offset := index % 8
 
-	// silently discard invalid bounded index
 	if byteIndex < 0 || byteIndex >= len(bf) {
 		return
 	}
@@ -40,11 +39,11 @@ func RecvBitfield(conn net.Conn) (Bitfield, error) {
 		return nil, err
 	}
 	if msg == nil {
-		err := fmt.Errorf("Invalid bitfield data: %s", msg)
+		err := fmt.Errorf("recieving bitfield failed: msg is nil [id: %d]", msg.ID)
 		return nil, err
 	}
 	if msg.ID != message.MsgBitfield {
-		err := fmt.Errorf("Invalid msg ID - value: %d expected: 5", msg.ID)
+		err := fmt.Errorf("recieving bitfield failed: wrong msg id [id: %d] - [expected: 5]", msg.ID)
 		return nil, err
 	}
 

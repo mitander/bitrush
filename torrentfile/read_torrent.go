@@ -111,7 +111,7 @@ func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
 	pieceHashes := make([][20]byte, numHashes)
 
 	if len(pieces)%hashLen != 0 {
-		err := fmt.Errorf("err: fauly pieces length")
+		err := fmt.Errorf("reading hash info failed: invalid hash length (length: %d - expected: %d", len(pieces), hashLen)
 		return [20]byte{}, [][20]byte{}, err
 	}
 
