@@ -59,12 +59,14 @@ func (tf *TorrentFile) Download(path string) error {
 		return err
 	}
 
-	outPath, err := os.Create(path)
+	file, err := os.Create(path)
 	if err != nil {
+		fmt.Println("err create")
+		fmt.Println(path)
 		return err
 	}
-	defer outPath.Close()
-	_, err = outPath.Write(buf)
+	defer file.Close()
+	_, err = file.Write(buf)
 	if err != nil {
 		return err
 	}
