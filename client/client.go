@@ -28,7 +28,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 		return nil, err
 	}
 
-	err = doHandshake(conn, infoHash, peerID)
+	_, err = doHandshake(conn, infoHash, peerID)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -50,7 +50,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	}, nil
 }
 
-func doHandshake(conn net.Conn, infohash, peerID [20]byte) error {
+func doHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Handshake, error) {
 	// set deadline to fail instead of blocking after 3 seconds
 	conn.SetDeadline(time.Now().Add(3 * time.Second))
 	defer conn.SetDeadline(time.Time{})
@@ -58,17 +58,17 @@ func doHandshake(conn net.Conn, infohash, peerID [20]byte) error {
 	hs := handshake.New(infohash, peerID)
 	_, err := conn.Write(hs.Serialize())
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("sending to connection failed")
 	}
 
 	res, err := handshake.Read(conn)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("read handshake failed")
 	}
 	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
-		return fmt.Errorf("Invalid infohash recieved: %x - expected: %x", res.InfoHash, infohash)
+		return nil, fmt.Errorf("Invalid infohash recieved: %x - expected: %x", res.InfoHash, infohash)
 	}
-	return nil
+	return res, nil
 }
 
 func (c *Client) SendRequest(index, begin, length int) error {
