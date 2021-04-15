@@ -31,7 +31,7 @@ func (bf Bitfield) SetPiece(index int) {
 }
 
 func RecvBitfield(conn net.Conn) (Bitfield, error) {
-	// set deadline to fail instead of blocking after 3 seconds
+	// set deadline to fail instead of blocking after 5 seconds
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 	defer conn.SetDeadline(time.Time{})
 
