@@ -61,7 +61,6 @@ func (tf *TorrentFile) Download(path string) error {
 
 	file, err := os.Create(path)
 	if err != nil {
-		fmt.Println("err create")
 		fmt.Println(path)
 		return err
 	}
