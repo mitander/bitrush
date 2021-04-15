@@ -41,6 +41,9 @@ func (tf *TorrentFile) Download(path string) error {
 	}
 
 	peers, err := tf.ReqPeers(peerID, Port)
+	if err != nil {
+		return err
+	}
 
 	t := p2p.Torrent{
 		Peers:       peers,
