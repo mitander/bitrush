@@ -54,18 +54,13 @@ func (tf *TorrentFile) Download(path string) error {
 		Length:      tf.Length,
 		Name:        tf.Name,
 	}
+
 	buf, err := t.Download()
 	if err != nil {
 		return err
 	}
 
-	file, err := os.Create(path)
-	if err != nil {
-		fmt.Println(path)
-		return err
-	}
-	defer file.Close()
-	_, err = file.Write(buf)
+	err = WriteFile(path, buf)
 	if err != nil {
 		return err
 	}
@@ -84,8 +79,21 @@ func OpenFile(path string) (TorrentFile, error) {
 	if err != nil {
 		return TorrentFile{}, err
 	}
-
 	return bct.toTorrentFile()
+}
+
+func WriteFile(path string, buf []byte) error {
+	file, err := os.Create(path)
+	if err != nil {
+		fmt.Println(path)
+		return err
+	}
+	defer file.Close()
+	_, err = file.Write(buf)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
@@ -93,7 +101,6 @@ func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 	if err != nil {
 		return TorrentFile{}, err
 	}
-
 	return TorrentFile{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
@@ -102,7 +109,6 @@ func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 		Length:      bct.Info.Length,
 		Name:        bct.Info.Name,
 	}, nil
-
 }
 
 func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
@@ -127,7 +133,5 @@ func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
 		return [20]byte{}, [][20]byte{}, err
 	}
 	infoHash := sha1.Sum(info.Bytes())
-
 	return infoHash, pieceHashes, nil
-
 }
