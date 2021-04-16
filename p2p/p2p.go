@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
-	"log"
 	"runtime"
 	"time"
 
 	"github.com/mitander/bitrush/client"
+	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
 )
@@ -57,7 +57,7 @@ func (t *Torrent) Download() ([]byte, error) {
 		queue <- &pieceWork{index, hash, length}
 	}
 
-	fmt.Println("Download started")
+	logger.CLI("Download started")
 	// for every peer - start a new dowload worker
 	for _, peer := range t.Peers {
 		go t.startWorker(peer, queue, results)
@@ -73,9 +73,10 @@ func (t *Torrent) Download() ([]byte, error) {
 		workers := runtime.NumGoroutine() - 1
 
 		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-		log.Printf("[Downloaded: %0.2f%% - Peers: %d]\n", percent, workers)
+		logger.CLI(fmt.Sprintf("Downloaded: %0.2f%% - Peers: %d\n", percent, workers))
 	}
 	close(queue)
+	logger.Debug("closing client")
 	return buf, nil
 }
 
@@ -83,28 +84,33 @@ func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results ch
 	// create a new client for every peer
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		fmt.Println(err)
+		logger.Debug(err.Error())
 		return
 	}
 	defer c.Conn.Close()
 
 	c.SendUnchoke()
+	logger.Debug("Sending Unchoke")
 	c.SendInterested()
+	logger.Debug("Sending Interested")
 
 	for pw := range queue {
 		if !c.Bitfield.HasPiece(pw.index) {
 			queue <- pw // put piece back in queue
+			logger.Warning("Bitfield don't have piece - put back in queue")
 			continue
 		}
 
 		buf, err := downloadPiece(c, pw)
 		if err != nil {
 			queue <- pw // put piece back in queue
+			logger.Warning("Error downloading piece - put back in queue")
 			return
 		}
 
 		err = validate(pw, buf)
 		if err != nil {
+			logger.Warning("Error validating hash")
 			queue <- pw // Put piece back on the queue
 			continue
 		}

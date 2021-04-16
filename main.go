@@ -4,10 +4,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
+	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/torrentfile"
 )
 
@@ -22,14 +22,13 @@ func main() {
 	flag.Parse()
 
 	if *debug {
-		fmt.Println("Debug enabled")
-		// TODO: implement logger
+		logger.Level(logger.DebugLevel)
 	}
 
 	if *read != "" {
 		tf, err := torrentfile.OpenFile(*read)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 
 		err = tf.Download(*write)
@@ -37,36 +36,35 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Println("")
-		fmt.Println("BitRush")
-		fmt.Println("-------")
-		fmt.Println("No .torrent file selected!")
-		fmt.Println("")
-		fmt.Println("Usage: bitrush -f <torrent file>")
-		fmt.Println("Help: bitrush -h")
-		fmt.Println("")
+		logger.CLI("BitRush")
+		logger.CLI("-------")
+		logger.CLI("No .torrent file selected!")
+		logger.CLI("Usage: bitrush -f <torrent file>")
+		logger.CLI("Help: bitrush -h")
 	}
 
 	if *help {
-		fmt.Println("")
-		fmt.Println("BitRush")
-		fmt.Println("-------")
-		fmt.Println("-f [file] (required)")
-		fmt.Println("Info: torrent file you want to open")
-		fmt.Println("Usage: bitrush -f <torrent file>")
-		fmt.Println("")
-		fmt.Println("-o [out file] (optional)")
-		fmt.Println("Info: output file location - default '.' (current directory)")
-		fmt.Println("Usage: bitrush -o <output file>")
-		fmt.Println("")
-		fmt.Println("-h [help] (optional)")
-		fmt.Println("Info: show help menu")
-		fmt.Println("Usage: bitrush -h")
-		fmt.Println("")
-		fmt.Println("-d [debug] (optional")
-		fmt.Println("info: enable debug")
-		fmt.Println("Usage: bitrush -d")
-		fmt.Println("")
-		os.Exit(0)
+		logger.CLI("")
+		logger.CLI("BitRush")
+		logger.CLI("-------")
+		logger.CLI("-f [file] (required)")
+		logger.CLI("Info: torrent file you want to open")
+		logger.CLI("Usage: bitrush -f <torrent file>")
+		logger.CLI("")
+		logger.CLI("-o [out file] (optional)")
+		logger.CLI("Info: output file location - default '.' (current directory)")
+		logger.CLI("Usage: bitrush -o <output file>")
+		logger.CLI("")
+		logger.CLI("-h [help] (optional)")
+		logger.CLI("Info: show help menu")
+		logger.CLI("Usage: bitrush -h")
+		logger.CLI("")
+		logger.CLI("-d [debug] (optional")
+		logger.CLI("info: enable debug")
+		logger.CLI("Usage: bitrush -d")
+		logger.CLI("")
 	}
+	logger.CLI("Download finished!")
+	logger.CLI("Exiting..")
+	os.Exit(1)
 }

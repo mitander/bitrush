@@ -7,6 +7,7 @@ import (
 	"os"
 
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/p2p"
 	"github.com/mitander/bitrush/peers"
 )
@@ -37,13 +38,17 @@ type bencodeInfo struct {
 func (tf *TorrentFile) Download(path string) error {
 	peerID, err := peers.GeneratePeerID()
 	if err != nil {
+		logger.Warning("Error generating peer id")
 		return err
 	}
+	logger.Info("generating peerID")
 
 	peers, err := tf.ReqPeers(peerID, Port)
 	if err != nil {
+		logger.Warning("Error requesting peers")
 		return err
 	}
+	logger.Info("requesting peers")
 
 	t := p2p.Torrent{
 		Peers:       peers,
@@ -57,22 +62,28 @@ func (tf *TorrentFile) Download(path string) error {
 
 	buf, err := t.Download()
 	if err != nil {
+		logger.Warning("Error downloading torrent")
 		return err
 	}
 
 	err = WriteFile(path, buf)
 	if err != nil {
+		logger.Warning("Error writing to file")
 		return err
 	}
+	logger.CLI(fmt.Sprintf("Writing torrent to file: %s", path))
 	return nil
 }
 
 func OpenFile(path string) (TorrentFile, error) {
 	file, err := os.Open(path)
 	if err != nil {
+		logger.Warning("Error opening file")
 		return TorrentFile{}, err
+
 	}
 	defer file.Close()
+	logger.Info("opening file")
 
 	bct := bencodeTorrent{}
 	err = bencode.Unmarshal(file, &bct)
@@ -101,6 +112,7 @@ func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 	if err != nil {
 		return TorrentFile{}, err
 	}
+	logger.Info("creating TorrentFile")
 	return TorrentFile{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
@@ -121,13 +133,11 @@ func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
 		err := fmt.Errorf("reading hash info failed: invalid hash length (length: %d - expected: %d", len(pieces), hashLen)
 		return [20]byte{}, [][20]byte{}, err
 	}
-
 	for i := range pieceHashes {
 		copy(pieceHashes[i][:], pieces[i*hashLen:(i+1)*hashLen])
 	}
 
 	var info bytes.Buffer
-
 	err := bencode.Marshal(&info, *bci)
 	if err != nil {
 		return [20]byte{}, [][20]byte{}, err
