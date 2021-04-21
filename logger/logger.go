@@ -27,7 +27,7 @@ const (
 var l = log.New(os.Stderr, "", 0)
 
 // sane default: 2
-var level loggerLevel = 4
+var level loggerLevel = 2
 
 func Debug(msg string) {
 	if DebugLevel <= level {
