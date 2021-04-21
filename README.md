@@ -21,7 +21,7 @@ export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 
 ## Usage
 
-** CLI **
+**CLI**
 * Download torrent file
 ```go
 bitrush -f debian.iso.torrent -o debian.iso
@@ -35,7 +35,7 @@ bitrush -f debian.iso.torrent -o debian.iso
 -d debug mode
 ```
 
-** Library **
+**Library**
 
 * Install package
 ```go
