@@ -6,11 +6,11 @@ A minimal BitTorrent CLI client written in Golang
 
 * Install package
 ```bash
-    go install "github.com/mitander/bitrush"
+go install "github.com/mitander/bitrush"
 ```
 * Verify GOPATH
 ```bash
-   echo $GOPATH
+echo $GOPATH
 ```
 
 * if GOPATH is empty, set GOPATH to $HOME/go (~/go)
@@ -39,11 +39,11 @@ bitrush -f debian.iso.torrent -o debian.iso
 
 * Install package
 ```go
-    go get "github.com/mitander/bitrush"
+go get "github.com/mitander/bitrush"
 ```
 * Import package
 ```go
- import "github.com/mitander/bitrush"
+import "github.com/mitander/bitrush"
 ```
 * Open torrent file
 ```go
