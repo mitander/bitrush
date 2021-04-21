@@ -24,25 +24,7 @@ func main() {
 	}
 
 	if *help {
-		logger.CLI("")
-		logger.CLI("BitRush")
-		logger.CLI("-------")
-		logger.CLI("-f [file] (required)")
-		logger.CLI("Info: torrent file you want to open")
-		logger.CLI("Usage: bitrush -f <torrent file>")
-		logger.CLI("")
-		logger.CLI("-o [out file] (optional)")
-		logger.CLI("Info: output file location - default '.' (current directory)")
-		logger.CLI("Usage: bitrush -o <output file>")
-		logger.CLI("")
-		logger.CLI("-h [help] (optional)")
-		logger.CLI("Info: show help menu")
-		logger.CLI("Usage: bitrush -h")
-		logger.CLI("")
-		logger.CLI("-d [debug] (optional")
-		logger.CLI("info: enable debug")
-		logger.CLI("Usage: bitrush -d")
-		logger.CLI("")
+		logger.Help()
 		os.Exit(1)
 	}
 
@@ -61,11 +43,7 @@ func main() {
 		logger.CLI("Exiting..")
 		os.Exit(1)
 	} else {
-		logger.CLI("BitRush")
-		logger.CLI("-------")
-		logger.CLI("No .torrent file selected!")
-		logger.CLI("Usage: bitrush -f <torrent file>")
-		logger.CLI("Help: bitrush -h")
+		logger.NoArgs()
 		os.Exit(1)
 	}
 }

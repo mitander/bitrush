@@ -24,37 +24,39 @@ const (
 	cyan   = "\033[36m"
 )
 
+var l = log.New(os.Stderr, "", 0)
+
 // sane default: 2
-var level loggerLevel = 2
+var level loggerLevel = 4
 
 func Debug(msg string) {
 	if DebugLevel <= level {
-		log.Printf(yellow+"[%+v]"+reset+": %+v \n", DebugLevel.name(), msg)
+		l.Printf(yellow+"[%+v]"+reset+": %+v \n", DebugLevel.name(), msg)
 	}
 }
 
 func Info(msg string) {
 	if InfoLevel <= level {
-		log.Printf(cyan+"[%+v]"+reset+": %+v \n", InfoLevel.name(), msg)
+		l.Printf(cyan+"[%+v]"+reset+": %+v \n", InfoLevel.name(), msg)
 	}
 }
 
 func Warning(msg string) {
 	if WarningLevel <= level {
-		log.Printf(red+"[%+v]"+reset+": %+v \n", WarningLevel.name(), msg)
+		l.Printf(red+"[%+v]"+reset+": %+v \n", WarningLevel.name(), msg)
 	}
 }
 
 func CLI(msg string) {
 	if CLILevel <= level {
-		log.Printf(cyan+"[%+v]"+reset+": %+v\n", CLILevel.name(), msg)
+		l.Printf("%+v\n", msg)
 	}
 }
 
 func Fatal(err error) {
 	if level >= FatalLevel {
-		log.Printf("[%+v]: %+v \n", InfoLevel.name(), err)
-		log.Printf("[%+v]: Fatal Error - Exiting... \n", InfoLevel.name())
+		l.Printf(red+"[%+v]: %d \n", InfoLevel.name(), err)
+		log.Printf(red+"[%+v]: Fatal Error - Exiting... \n", InfoLevel.name())
 		os.Exit(1)
 	}
 }
@@ -62,6 +64,41 @@ func Fatal(err error) {
 func Level(l loggerLevel) {
 	level = l
 	Debug(fmt.Sprint("Logger set to: ", l.name()))
+}
+
+func Help() {
+	CLI("")
+	CLI("BitRush")
+	CLI("-------")
+	CLI("-f [file] (required)")
+	CLI("Info: torrent file you want to open")
+	CLI("Usage: bitrush -f <torrent file>")
+	CLI("")
+	CLI("-o [out file] (optional)")
+	CLI("Info: output file location - default '.' (current directory)")
+	CLI("Usage: bitrush -o <output file>")
+	CLI("")
+	CLI("-h [help] (optional)")
+	CLI("Info: show help menu")
+	CLI("Usage: bitrush -h")
+	CLI("")
+	CLI("-d [debug] (optional")
+	CLI("info: enable debug")
+	CLI("Usage: bitrush -d")
+	CLI("-------")
+	CLI("")
+}
+
+func NoArgs() {
+	CLI("")
+	CLI("BitRush")
+	CLI("-------")
+	CLI("No .torrent file selected!")
+	CLI("")
+	CLI("Usage: bitrush -f <torrent file>")
+	CLI("Help: bitrush -h")
+	CLI("-------")
+	CLI("")
 }
 
 func (l loggerLevel) name() string {
