@@ -1,7 +1,5 @@
 package main
 
-// TODO: implement logger
-
 import (
 	"flag"
 	"log"
@@ -25,24 +23,6 @@ func main() {
 		logger.Level(logger.DebugLevel)
 	}
 
-	if *read != "" {
-		tf, err := torrentfile.OpenFile(*read)
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		err = tf.Download(*write)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		logger.CLI("BitRush")
-		logger.CLI("-------")
-		logger.CLI("No .torrent file selected!")
-		logger.CLI("Usage: bitrush -f <torrent file>")
-		logger.CLI("Help: bitrush -h")
-	}
-
 	if *help {
 		logger.CLI("")
 		logger.CLI("BitRush")
@@ -63,8 +43,29 @@ func main() {
 		logger.CLI("info: enable debug")
 		logger.CLI("Usage: bitrush -d")
 		logger.CLI("")
+		os.Exit(1)
 	}
-	logger.CLI("Download finished!")
-	logger.CLI("Exiting..")
-	os.Exit(1)
+
+	if *read != "" {
+		tf, err := torrentfile.OpenFile(*read)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		err = tf.Download(*write)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		logger.CLI("Download finished!")
+		logger.CLI("Exiting..")
+		os.Exit(1)
+	} else {
+		logger.CLI("BitRush")
+		logger.CLI("-------")
+		logger.CLI("No .torrent file selected!")
+		logger.CLI("Usage: bitrush -f <torrent file>")
+		logger.CLI("Help: bitrush -h")
+		os.Exit(1)
+	}
 }
