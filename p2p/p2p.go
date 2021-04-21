@@ -97,20 +97,20 @@ func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results ch
 	for pw := range queue {
 		if !c.Bitfield.HasPiece(pw.index) {
 			queue <- pw // put piece back in queue
-			logger.Warning("Bitfield don't have piece - put back in queue")
+			logger.Debug("Bitfield don't have piece - put back in queue")
 			continue
 		}
 
 		buf, err := downloadPiece(c, pw)
 		if err != nil {
 			queue <- pw // put piece back in queue
-			logger.Warning("Error downloading piece - put back in queue")
+			logger.Debug("Error downloading piece - put back in queue")
 			return
 		}
 
 		err = validate(pw, buf)
 		if err != nil {
-			logger.Warning("Error validating hash")
+			logger.Debug("Error validating hash")
 			queue <- pw // Put piece back on the queue
 			continue
 		}
