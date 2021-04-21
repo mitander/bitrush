@@ -16,7 +16,7 @@ echo $GOPATH
 * if GOPATH is empty, set GOPATH to $HOME/go (~/go)
 ```bash
 export GOPATH=$HOME/go
-export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+export PATH=$PATH:$GOPATH/bin
 ```
 
 ## Usage
