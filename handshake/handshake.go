@@ -1,8 +1,11 @@
 package handshake
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"net"
+	"time"
 
 	"github.com/mitander/bitrush/peers"
 )
@@ -20,6 +23,31 @@ func New(infoHash, peerID [20]byte) *Handshake {
 		InfoHash: infoHash,
 		PeerID:   peerID,
 	}
+}
+
+func DoHandshake(conn net.Conn, infohash, peerID [20]byte) (*Handshake, error) {
+	// should not take more than 3 seconds to complete handshake
+	conn.SetDeadline(time.Now().Add(3 * time.Second))
+	defer conn.SetDeadline(time.Time{})
+
+	// create new handshake
+	hs := New(infohash, peerID)
+
+	// write to connection
+	_, err := conn.Write(hs.Serialize())
+	if err != nil {
+		return nil, fmt.Errorf("handshake failed: writing connection")
+	}
+	// read from connection
+	res, err := Read(conn)
+	if err != nil {
+		return nil, fmt.Errorf("handshake failed: reading connection")
+	}
+	// compare info-hashes
+	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
+		return nil, fmt.Errorf("handshake failed: invalid infohash (recieved: %x - expected: %x)", res.InfoHash, infohash)
+	}
+	return res, nil
 }
 
 // handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
