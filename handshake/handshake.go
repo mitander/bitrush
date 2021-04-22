@@ -72,12 +72,12 @@ func Read(r io.Reader) (*Handshake, error) {
 
 	_, err = io.ReadFull(r, lengthBuf)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading buffer")
+		return nil, fmt.Errorf("error reading buffer")
 	}
 
 	pstrlen := int(lengthBuf[0])
 	if pstrlen == 0 {
-		err := fmt.Errorf("Invalid pstrlen, cannot be 0")
+		err := fmt.Errorf("invalid pstrlen: cannot be 0")
 		return nil, err
 	}
 
