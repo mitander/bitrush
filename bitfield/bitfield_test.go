@@ -10,7 +10,6 @@ func TestHasPiece(t *testing.T) {
 	bf := Bitfield{0b01000110, 0b01010100}
 	outputs := []bool{false, true, false, false, false, true, true, false, false, true, false, true, false, true, false, false, false, false, false, false}
 	for i := 0; i < len(outputs); i++ {
-		t.Log(i, bf.HasPiece(i))
 		assert.Equal(t, outputs[i], bf.HasPiece(i))
 	}
 }
@@ -42,8 +41,7 @@ func TestSetPiece(t *testing.T) {
 			output: Bitfield{0b01010110, 0b01110100},
 		},
 	}
-	for i, test := range tests {
-		t.Log(i)
+	for _, test := range tests {
 		bf := test.input
 		bf.SetPiece(test.index)
 		assert.Equal(t, test.output, bf)
