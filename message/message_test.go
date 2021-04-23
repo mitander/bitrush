@@ -28,6 +28,45 @@ func TestFormatHaveMsg(t *testing.T) {
 	assert.Equal(t, expected, msg)
 }
 
+func TestParseHaveMsg(t *testing.T) {
+	tests := map[string]struct {
+		input  *Message
+		output int
+		fails  bool
+	}{
+		"correct input": {
+			input:  &Message{ID: MsgHave, Payload: []byte{0x00, 0x00, 0x00, 0x01}},
+			output: 1,
+			fails:  false,
+		},
+		"invalid message type": {
+			input:  &Message{ID: MsgPiece, Payload: []byte{0x00, 0x00, 0x00, 0x01}},
+			output: 0,
+			fails:  true,
+		},
+		"invalid payload length: too short": {
+			input:  &Message{ID: MsgHave, Payload: []byte{0x00, 0x00, 0x01}},
+			output: 0,
+			fails:  true,
+		},
+		"invalid payload length: too long": {
+			input:  &Message{ID: MsgHave, Payload: []byte{0x00, 0x00, 0x00, 0x00, 0x01}},
+			output: 0,
+			fails:  true,
+		},
+	}
+
+	for _, test := range tests {
+		index, err := ParseHaveMsg(test.input)
+		if test.fails {
+			assert.NotNil(t, err)
+		} else {
+			assert.Nil(t, err)
+		}
+		assert.Equal(t, test.output, index)
+	}
+}
+
 func TestParsePieceMsg(t *testing.T) {
 	tests := map[string]struct {
 		inputIndex int
