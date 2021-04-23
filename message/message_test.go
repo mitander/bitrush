@@ -1,6 +1,7 @@
 package message
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -172,5 +173,45 @@ func TestParsePieceMsg(t *testing.T) {
 		}
 		assert.Equal(t, test.outputBuf, test.inputBuf)
 		assert.Equal(t, test.outputN, n)
+	}
+}
+
+func TestRead(t *testing.T) {
+	tests := map[string]struct {
+		input  []byte
+		output *Message
+		fails  bool
+	}{
+		"correct input": {
+			input:  []byte{0, 0, 0, 5, 4, 1, 2, 3, 4},
+			output: &Message{ID: MsgHave, Payload: []byte{1, 2, 3, 4}},
+			fails:  false,
+		},
+		"keep-alive message": {
+			input:  []byte{0, 0, 0, 0},
+			output: nil,
+			fails:  false,
+		},
+		"invalid length: too short": {
+			input:  []byte{1, 2, 3},
+			output: nil,
+			fails:  true,
+		},
+		"invalid length: too long for buffer": {
+			input:  []byte{0, 0, 0, 5, 4, 1, 2},
+			output: nil,
+			fails:  true,
+		},
+	}
+
+	for _, test := range tests {
+		reader := bytes.NewReader(test.input)
+		m, err := Read(reader)
+		if test.fails {
+			assert.NotNil(t, err)
+		} else {
+			assert.Nil(t, err)
+		}
+		assert.Equal(t, test.output, m)
 	}
 }
