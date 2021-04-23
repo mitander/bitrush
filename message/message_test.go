@@ -215,3 +215,26 @@ func TestRead(t *testing.T) {
 		assert.Equal(t, test.output, m)
 	}
 }
+
+func TestString(t *testing.T) {
+	tests := []struct {
+		input  *Message
+		output string
+	}{
+		{&Message{MsgChoke, []byte{1, 2, 3}}, "Choke: 3"},
+		{&Message{MsgUnchoke, []byte{1, 2, 3}}, "Unchoke: 3"},
+		{&Message{MsgInterested, []byte{1, 2, 3}}, "Interested: 3"},
+		{&Message{MsgNotInterested, []byte{1, 2, 3}}, "NotInterested: 3"},
+		{&Message{MsgHave, []byte{1, 2, 3}}, "Have: 3"},
+		{&Message{MsgBitfield, []byte{1, 2, 3}}, "Bitfield: 3"},
+		{&Message{MsgRequest, []byte{1, 2, 3}}, "Request: 3"},
+		{&Message{MsgPiece, []byte{1, 2, 3}}, "Piece: 3"},
+		{&Message{MsgCancel, []byte{1, 2, 3}}, "Cancel: 3"},
+		{&Message{10, []byte{1, 2, 3}}, "!10: 3"},
+	}
+
+	for _, test := range tests {
+		s := test.input.String()
+		assert.Equal(t, test.output, s)
+	}
+}
