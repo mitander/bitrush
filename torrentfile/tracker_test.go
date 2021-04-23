@@ -11,7 +11,7 @@ import (
 )
 
 func TestParseTrackerUrl(t *testing.T) {
-	const port uint16 = 6888
+	const port uint16 = 6889
 	peerID := [20]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
 	tf := TorrentFile{
 		Announce: "http://test.tracker.org:6969/announce",
@@ -25,7 +25,7 @@ func TestParseTrackerUrl(t *testing.T) {
 		Name:        "test.iso",
 	}
 	url, err := tf.parseTrackerUrl(peerID, port)
-	expected := "http://test.tracker.org:6969/announce?compact=1&downloaded=0&info_hash=%94f%D5U%AE%F6%92~%7F%F6U%0F%16%06%BA%80%DCi%0C%0F&left=351272960&peer_id=%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14&port=6888&uploaded=0"
+	expected := "http://test.tracker.org:6969/announce?compact=1&downloaded=0&info_hash=%94f%D5U%AE%F6%92~%7F%F6U%0F%16%06%BA%80%DCi%0C%0F&left=351272960&peer_id=%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14&port=6889&uploaded=0"
 	assert.Nil(t, err)
 	assert.Equal(t, url, expected)
 }

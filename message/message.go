@@ -137,13 +137,13 @@ func (msg *Message) name() string {
 	case MsgCancel:
 		return "Cancel"
 	default:
-		return fmt.Sprintf("parse message name: invalid id [id: %d] - [expected: 0-9]", msg.ID)
+		return fmt.Sprintf("!%d", msg.ID)
 	}
 }
 
 func (msg *Message) String() string {
-	if msg.Payload == nil {
+	if msg == nil {
 		return msg.name()
 	}
-	return fmt.Sprintf("%s %d", msg.name(), len(msg.Payload))
+	return fmt.Sprintf("%s: %d", msg.name(), len(msg.Payload))
 }
