@@ -8,16 +8,6 @@ A minimal BitTorrent CLI client written in Golang
 ```bash
 go install "github.com/mitander/bitrush"
 ```
-* Verify GOPATH
-```bash
-echo $GOPATH
-```
-
-* if GOPATH is empty, set GOPATH to $HOME/go (~/go)
-```bash
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin
-```
 
 ## Usage
 
