@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackpal/bencode-go"
 	"github.com/mitander/bitrush/peers"
+	log "github.com/sirupsen/logrus"
 )
 
 const TrackerPort = 6889
@@ -21,6 +22,7 @@ type Tracker struct {
 func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte) (Tracker, error) {
 	u, err := url.Parse(announce)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to create tracker")
 		return Tracker{}, err
 	}
 
@@ -59,6 +61,7 @@ func (t *Tracker) ReqPeers() ([]peers.Peer, error) {
 	response := trackerRes{}
 	err = bencode.Unmarshal(res.Body, &response)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to unmarshal bencode")
 		return nil, err
 	}
 	return peers.Unmarshal([]byte(response.Peers))

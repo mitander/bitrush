@@ -1,8 +1,6 @@
 package client
 
 import (
-	"bytes"
-	"fmt"
 	"net"
 	"time"
 
@@ -10,6 +8,7 @@ import (
 	"github.com/mitander/bitrush/handshake"
 	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
+	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -25,6 +24,7 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	// should not take more than 3 seconds to establish connection
 	conn, err := net.DialTimeout("tcp", peer.String(), 3*time.Second)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error(), "peer": peer.String()}).Error("failed to connect to peer")
 		return nil, err
 	}
 
@@ -50,52 +50,36 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	}, nil
 }
 
-func DoHandshake(conn net.Conn, infohash, peerID [20]byte) (*handshake.Handshake, error) {
-	conn.SetDeadline(time.Now().Add(3 * time.Second))
-	defer conn.SetDeadline(time.Time{})
-
-	hs := handshake.New(infohash, peerID)
-
-	_, err := conn.Write(hs.Serialize())
-	if err != nil {
-		return nil, fmt.Errorf("handshake failed: writing connection")
-	}
-	res, err := handshake.Read(conn)
-	if err != nil {
-		return nil, fmt.Errorf("handshake failed: reading connection")
-	}
-	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
-		return nil, fmt.Errorf("handshake failed: invalid infohash (recieved: %x - expected: %x)", res.InfoHash, infohash)
-	}
-	return res, nil
-}
-
 func (c *Client) SendRequest(index, begin, length int) error {
-	req := message.FormatRequestMsg(index, begin, length)
-	_, err := c.Conn.Write(req.Serialize())
-	return err
-}
-
-func (c *Client) SendInterested() error {
-	msg := message.Message{ID: message.MsgInterested}
-	_, err := c.Conn.Write(msg.Serialize())
-	return err
-}
-
-func (c *Client) SendNotInterested() error {
-	msg := message.Message{ID: message.MsgNotInterested}
-	_, err := c.Conn.Write(msg.Serialize())
-	return err
-}
-
-func (c *Client) SendUnchoke() error {
-	msg := message.Message{ID: message.MsgUnchoke}
-	_, err := c.Conn.Write(msg.Serialize())
-	return err
+	log.Debug("sending 'request'")
+	return c.send(message.FormatRequestMsg(index, begin, length))
 }
 
 func (c *Client) SendHave(index int) error {
-	msg := message.FormatHaveMsg(index)
+	log.Debug("sending 'have'")
+	return c.send(message.FormatHaveMsg(index))
+}
+
+func (c *Client) SendInterested() error {
+	log.Debug("sending 'interested'")
+	return c.send(&message.Message{ID: message.MsgInterested})
+}
+
+func (c *Client) SendNotInterested() error {
+	log.Debug("sending 'not interested'")
+	return c.send(&message.Message{ID: message.MsgNotInterested})
+}
+
+func (c *Client) SendUnchoke() error {
+	log.Debug("sending 'unchoke'")
+	return c.send(&(message.Message{ID: message.MsgUnchoke}))
+}
+
+func (c *Client) send(msg *message.Message) error {
 	_, err := c.Conn.Write(msg.Serialize())
-	return err
+	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error(), "message": msg.String()}).Error("failed to send message")
+		return err
+	}
+	return nil
 }

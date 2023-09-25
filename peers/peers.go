@@ -3,9 +3,11 @@ package peers
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"net"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // http://www.bittorrent.org/beps/bep_0020.html
@@ -27,7 +29,8 @@ func Unmarshal(b []byte) ([]Peer, error) {
 	const size = 6
 	count := len(b) / size
 	if len(b)%size != 0 {
-		err := fmt.Errorf("peer unmarshal failed: bin empty (bin: %d)", len(b))
+		err := errors.New("invalid compact peer list length")
+		log.Error(err.Error())
 		return nil, err
 	}
 	peers := make([]Peer, count)
@@ -47,5 +50,9 @@ func GeneratePeerID() (PeerID, error) {
 	var id PeerID
 	copy(id[:], peerIDPrefix)
 	_, err := rand.Read(id[len(peerIDPrefix):])
-	return id, err
+	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to generate peer id")
+		return PeerID{}, err
+	}
+	return id, nil
 }

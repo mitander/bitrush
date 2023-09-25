@@ -3,14 +3,14 @@ package p2p
 import (
 	"bytes"
 	"crypto/sha1"
-	"fmt"
+	"errors"
 	"runtime"
 	"time"
 
 	"github.com/mitander/bitrush/client"
-	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
+	log "github.com/sirupsen/logrus"
 )
 
 const MaxBlockSize = 16384
@@ -46,7 +46,7 @@ type pieceState struct {
 	backlog    int
 }
 
-func (t *Torrent) Download() ([]byte, error) {
+func (t *Torrent) Download() []byte {
 	hashes := t.PieceHashes
 	queue := make(chan *pieceWork, len(hashes))
 	results := make(chan *pieceResult)
@@ -57,7 +57,7 @@ func (t *Torrent) Download() ([]byte, error) {
 		queue <- &pieceWork{index, hash, length}
 	}
 
-	logger.CLI("Download started")
+	log.Info("Download started")
 	// for every peer - start a new dowload worker
 	for _, peer := range t.Peers {
 		go t.startWorker(peer, queue, results)
@@ -73,45 +73,43 @@ func (t *Torrent) Download() ([]byte, error) {
 		workers := runtime.NumGoroutine() - 1
 
 		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-		logger.CLI(fmt.Sprintf("Downloaded: %0.2f%% - Peers: %d\n", percent, workers))
+		log.Infof("Downloaded: %0.2f%% - Peers: %d\n", percent, workers)
 	}
 	close(queue)
-	logger.Debug("closing client")
-	return buf, nil
+	log.Debug("closing client")
+	return buf
 }
 
 func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results chan *pieceResult) {
 	// create a new client for every peer
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		logger.Debug(err.Error())
+		log.WithFields(log.Fields{"reason": err.Error(), "peer": peer.String()}).Warn("worker failed to create client")
 		return
 	}
 	defer c.Conn.Close()
 
 	c.SendUnchoke()
-	logger.Debug("Sending Unchoke")
 	c.SendInterested()
-	logger.Debug("Sending Interested")
 
 	for pw := range queue {
 		if !c.Bitfield.HasPiece(pw.index) {
 			queue <- pw // put piece back in queue
-			logger.Debug("Bitfield don't have piece - put back in queue")
+			log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
 			continue
 		}
 
 		buf, err := downloadPiece(c, pw)
 		if err != nil {
-			queue <- pw // put piece back in queue
-			logger.Debug("Error downloading piece - put back in queue")
-			return
+			queue <- pw
+			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
+			continue
 		}
 
 		err = validate(pw, buf)
 		if err != nil {
-			logger.Debug("Error validating hash")
-			queue <- pw // Put piece back on the queue
+			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
+			queue <- pw
 			continue
 		}
 
@@ -141,7 +139,6 @@ func downloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 				err := c.SendRequest(pw.index, state.requested, blockSize)
 				if err != nil {
-					err = fmt.Errorf("sending request failed: %s", err)
 					return nil, err
 				}
 				state.backlog++
@@ -200,7 +197,9 @@ func (state *pieceState) readMessage() error {
 func validate(pw *pieceWork, buf []byte) error {
 	hash := sha1.Sum(buf)
 	if !bytes.Equal(hash[:], pw.hash[:]) {
-		return fmt.Errorf("piece work validation failed: (index: %d)", pw.index)
+		err := errors.New("piece work validation failed")
+		log.Error(err.Error())
+		return err
 	}
 	return nil
 }

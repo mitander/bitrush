@@ -2,8 +2,19 @@ package message
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+
+	log "github.com/sirupsen/logrus"
+)
+
+var (
+	InvalidMessageId     error = errors.New("invalid message id")
+	InvalidPayloadLength error = errors.New("invalid payload length")
+	InvalidMessageIndex  error = errors.New("invalid payload length")
+	InvalidBufferLength  error = errors.New("invalid buffer length")
+	InvalidDataLength    error = errors.New("invalid data length")
 )
 
 type messageID uint8
@@ -48,10 +59,13 @@ func FormatHaveMsg(index int) *Message {
 
 func ParseHaveMsg(msg *Message) (int, error) {
 	if msg.ID != MsgHave {
-		return 0, fmt.Errorf("parsing have message failed: message id (id:%d - expected: %d)", MsgHave, msg.ID)
+		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgHave}).Error(InvalidMessageId.Error())
+		return 0, InvalidMessageId
 	}
+
 	if len(msg.Payload) != 4 {
-		return 0, fmt.Errorf("parsing have message failed: payload length (input: %d - expected: 4)", len(msg.Payload))
+		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 4}).Error(InvalidPayloadLength.Error())
+		return 0, InvalidPayloadLength
 	}
 	index := int(binary.BigEndian.Uint32(msg.Payload))
 	return index, nil
@@ -59,23 +73,33 @@ func ParseHaveMsg(msg *Message) (int, error) {
 
 func ParsePieceMsg(index int, buf []byte, msg *Message) (int, error) {
 	if msg.ID != MsgPiece {
-		return 0, fmt.Errorf("parsing piece message failed: message id (id:%d - expected:%d)", MsgPiece, msg.ID)
+		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgPiece}).Error(InvalidMessageId.Error())
+		return 0, InvalidMessageId
 	}
+
 	if len(msg.Payload) < 8 {
-		return 0, fmt.Errorf("parsing piece message failed: payload length - (id: %d - expected: 8)", len(msg.Payload))
+		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 8}).Error(InvalidPayloadLength.Error())
+		return 0, InvalidPayloadLength
 	}
+
 	parsedIndex := int(binary.BigEndian.Uint32(msg.Payload[0:4]))
 	if parsedIndex != index {
-		return 0, fmt.Errorf("parsing piece message failed: invalid index (index: %d - expected: %d)", index, parsedIndex)
+		log.WithFields(log.Fields{"got": parsedIndex, "expected": index}).Error(InvalidMessageIndex.Error())
+		return 0, InvalidMessageIndex
 	}
+
 	begin := int(binary.BigEndian.Uint32(msg.Payload[4:8]))
 	if begin >= len(buf) {
-		return 0, fmt.Errorf("parsing piece message failed: invalid buffer length (begin:%d - expected: %d)", begin, len(buf))
+		log.WithFields(log.Fields{"got": begin, "expected-over": len(buf)}).Error(InvalidBufferLength.Error())
+		return 0, InvalidBufferLength
 	}
+
 	data := msg.Payload[8:]
 	if begin+len(data) > len(buf) {
-		return 0, fmt.Errorf("parsing piece message failed: invalid data length (data:%d - expected: %d)", data, len(buf))
+		log.WithFields(log.Fields{"got": begin + len(data), "expected-over": len(buf)}).Error(InvalidDataLength.Error())
+		return 0, InvalidDataLength
 	}
+
 	copy(buf[begin:], data)
 	return len(data), nil
 }
@@ -96,15 +120,19 @@ func Read(r io.Reader) (*Message, error) {
 	lengthBuf := make([]byte, 4)
 	_, err := io.ReadFull(r, lengthBuf)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
 		return nil, err
 	}
 	length := binary.BigEndian.Uint32(lengthBuf)
 	if length == 0 {
-		return nil, nil
+		err := errors.New("length cannot be 0")
+		log.Error(err.Error())
+		return nil, err
 	}
 	msgBuf := make([]byte, length)
 	_, err = io.ReadFull(r, msgBuf)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
 		return nil, err
 	}
 	return &Message{

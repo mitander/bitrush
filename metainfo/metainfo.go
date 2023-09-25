@@ -3,14 +3,14 @@ package metainfo
 import (
 	"bytes"
 	"crypto/sha1"
-	"fmt"
+	"errors"
 	"os"
 
 	bencode "github.com/jackpal/bencode-go"
-	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/p2p"
 	"github.com/mitander/bitrush/peers"
 	"github.com/mitander/bitrush/tracker"
+	log "github.com/sirupsen/logrus"
 )
 
 type MetaInfo struct {
@@ -37,18 +37,20 @@ type infoBencode struct {
 func (m *MetaInfo) Download(path string) error {
 	peerID, err := peers.GeneratePeerID()
 	if err != nil {
-		logger.Warning("Error generating peer id")
 		return err
 	}
-	logger.Info("generating peerID")
+	log.Debug("generating peer id")
 
 	tr, err := tracker.NewTracker(m.Announce, m.Length, m.InfoHash, peerID)
-	peers, err := tr.ReqPeers()
 	if err != nil {
-		logger.Warning("Error requesting peers")
 		return err
 	}
-	logger.Info("requesting peers")
+
+	log.Debug("requesting peers")
+	peers, err := tr.ReqPeers()
+	if err != nil {
+		return err
+	}
 
 	t := p2p.Torrent{
 		Peers:       peers,
@@ -60,34 +62,33 @@ func (m *MetaInfo) Download(path string) error {
 		Name:        m.Name,
 	}
 
-	buf, err := t.Download()
+	buf := t.Download()
+
+	// TODO: Write continiously to file, this keeps file content in memory
+	// until everything is downloaded..
+	err = WriteFile(path, buf)
 	if err != nil {
-		logger.Warning("Error downloading torrent")
 		return err
 	}
 
-	err = WriteFile(path, buf)
-	if err != nil {
-		logger.Warning("Error writing to file")
-		return err
-	}
-	logger.CLI(fmt.Sprintf("Writing torrent to file: %s", path))
+	log.Infof("Writing torrent to file: %s", path)
 	return nil
 }
 
 func OpenFile(path string) (MetaInfo, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		logger.Warning("Error opening file")
+		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to open file")
 		return MetaInfo{}, err
 
 	}
 	defer file.Close()
-	logger.Info("opening file")
+	log.Debug("opening file")
 
 	bct := torrentBencode{}
 	err = bencode.Unmarshal(file, &bct)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to unmarshal bencode from file")
 		return MetaInfo{}, err
 	}
 	return bct.toMetaInfo()
@@ -96,7 +97,6 @@ func OpenFile(path string) (MetaInfo, error) {
 func WriteFile(path string, buf []byte) error {
 	file, err := os.Create(path)
 	if err != nil {
-		fmt.Println(path)
 		return err
 	}
 	defer file.Close()
@@ -112,15 +112,16 @@ func (bct *torrentBencode) toMetaInfo() (MetaInfo, error) {
 	if err != nil {
 		return MetaInfo{}, err
 	}
-	logger.Info("creating TorrentFile")
-	return MetaInfo{
+	m := MetaInfo{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
 		PieceLength: bct.Info.PieceLength,
 		Length:      bct.Info.Length,
 		Name:        bct.Info.Name,
-	}, nil
+	}
+	log.Debugf("created torrent meta info: %s", bct.Info.Name)
+	return m, nil
 }
 
 func (i *infoBencode) hash() ([20]byte, [][20]byte, error) {
@@ -130,7 +131,8 @@ func (i *infoBencode) hash() ([20]byte, [][20]byte, error) {
 	pieceHashes := make([][20]byte, numHashes)
 
 	if len(pieces)%hashLen != 0 {
-		err := fmt.Errorf("reading hash info failed: invalid hash length (length: %d - expected: %d", len(pieces), hashLen)
+		err := errors.New("invalid hash length")
+		log.Error(err.Error())
 		return [20]byte{}, [][20]byte{}, err
 	}
 	for i := range pieceHashes {

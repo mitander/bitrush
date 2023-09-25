@@ -41,7 +41,7 @@ func TestRead(t *testing.T) {
 
 	for _, test := range tests {
 		reader := bytes.NewReader(test.input)
-		hs, err := Read(reader)
+		hs, err := read(reader)
 		if test.fails {
 			assert.NotNil(t, err)
 		} else {

@@ -2,15 +2,16 @@ package handshake
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"time"
 
 	"github.com/mitander/bitrush/peers"
+	log "github.com/sirupsen/logrus"
 )
 
-//https://wiki.theory.org/BitTorrentSpecification#Handshake
+// https://wiki.theory.org/BitTorrentSpecification#Handshake
 type Handshake struct {
 	Pstr     string
 	InfoHash [20]byte
@@ -26,21 +27,24 @@ func New(infoHash, peerID [20]byte) *Handshake {
 }
 
 func DoHandshake(conn net.Conn, infohash, peerID [20]byte) (*Handshake, error) {
-	// should not take more than 3 seconds to complete handshake
 	conn.SetDeadline(time.Now().Add(3 * time.Second))
 	defer conn.SetDeadline(time.Time{})
 
 	hs := New(infohash, peerID)
+
 	_, err := conn.Write(hs.Serialize())
 	if err != nil {
-		return nil, fmt.Errorf("handshake failed: writing connection")
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to send handshake")
+		return nil, err
 	}
-	res, err := Read(conn)
+	res, err := read(conn)
 	if err != nil {
-		return nil, fmt.Errorf("handshake failed: reading connection")
+		return nil, err
 	}
 	if !bytes.Equal(res.InfoHash[:], infohash[:]) {
-		return nil, fmt.Errorf("handshake failed: invalid infohash (recieved: %x - expected: %x)", res.InfoHash, infohash)
+		err := errors.New("invalid info hash")
+		log.WithFields(log.Fields{"got": res.InfoHash, "expected": infohash}).Error(err.Error())
+		return nil, err
 	}
 	return res, nil
 }
@@ -57,22 +61,24 @@ func (h *Handshake) Serialize() []byte {
 	return buf
 }
 
-func Read(r io.Reader) (*Handshake, error) {
+func read(r io.Reader) (*Handshake, error) {
 	peerID, err := peers.GeneratePeerID()
 	if err != nil {
 		return nil, err
 	}
 
-	lengthBuf := make([]byte, 1)
+	bufLen := make([]byte, 1)
 
-	_, err = io.ReadFull(r, lengthBuf)
+	_, err = io.ReadFull(r, bufLen)
 	if err != nil {
-		return nil, fmt.Errorf("error reading buffer")
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
+		return nil, err
 	}
 
-	pstrlen := int(lengthBuf[0])
+	pstrlen := int(bufLen[0])
 	if pstrlen == 0 {
-		err := fmt.Errorf("invalid pstrlen: cannot be 0")
+		err := errors.New("pstrlen cannot be 0 ")
+		log.Error(err.Error())
 		return nil, err
 	}
 

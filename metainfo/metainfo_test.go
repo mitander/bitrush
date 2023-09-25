@@ -3,7 +3,7 @@ package metainfo
 import (
 	"encoding/json"
 	"flag"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,11 +22,11 @@ func TestOpenFile(t *testing.T) {
 	if *write {
 		serialized, err := json.MarshalIndent(info, "", "  ")
 		require.Nil(t, err)
-		ioutil.WriteFile(jsonPath, serialized, 0644)
+		os.WriteFile(jsonPath, serialized, 0644)
 	}
 
 	expected := MetaInfo{}
-	format, err := ioutil.ReadFile(jsonPath)
+	format, err := os.ReadFile(jsonPath)
 	require.Nil(t, err)
 	err = json.Unmarshal(format, &expected)
 	require.Nil(t, err)
@@ -36,14 +36,14 @@ func TestOpenFile(t *testing.T) {
 
 func TestToMetaInfo(t *testing.T) {
 	tests := map[string]struct {
-		input  *bencodeTorrent
+		input  *torrentBencode
 		output MetaInfo
 		fails  bool
 	}{
 		"correct input": {
-			input: &bencodeTorrent{
+			input: &torrentBencode{
 				Announce: "http://test.tracker.org:6969/announce",
-				Info: bencodeInfo{
+				Info: infoBencode{
 					Pieces:      "T0e1S2t3P4i5E6c7E8s9T0e1S2t3P4i5E6c7E8s9",
 					PieceLength: 262144,
 					Length:      351272960,
@@ -64,9 +64,9 @@ func TestToMetaInfo(t *testing.T) {
 			fails: false,
 		},
 		"invalid pieces length": {
-			input: &bencodeTorrent{
+			input: &torrentBencode{
 				Announce: "http://test.tracker.org:6969/announce",
-				Info: bencodeInfo{
+				Info: infoBencode{
 					Pieces:      "T1e2S3t4P5i6E7c8E9s10", // <- fails here: only 20 bytes
 					PieceLength: 262144,
 					Length:      351272960,
