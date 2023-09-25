@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"os"
+	"path/filepath"
 
 	bencode "github.com/jackpal/bencode-go"
 	"github.com/mitander/bitrush/p2p"
@@ -66,7 +67,8 @@ func (m *MetaInfo) Download(path string) error {
 
 	// TODO: Write continiously to file, this keeps file content in memory
 	// until everything is downloaded..
-	err = WriteFile(path, buf)
+	filePath := filepath.Join(path, m.Name)
+	err = WriteFile(filePath, buf)
 	if err != nil {
 		return err
 	}
@@ -95,7 +97,7 @@ func OpenFile(path string) (MetaInfo, error) {
 }
 
 func WriteFile(path string, buf []byte) error {
-	file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
 	}
