@@ -1,4 +1,4 @@
-package torrentfile
+package metainfo
 
 import (
 	"encoding/json"
@@ -16,28 +16,28 @@ func TestOpenFile(t *testing.T) {
 	torrentPath := "./testdata/debian-10.9.0-amd64-netinst.iso.torrent"
 	jsonPath := "./testdata/debian-10.9.0-amd64-netinst.iso.json"
 
-	torrent, err := OpenFile(torrentPath)
+	info, err := OpenFile(torrentPath)
 	require.Nil(t, err)
 
 	if *write {
-		serialized, err := json.MarshalIndent(torrent, "", "  ")
+		serialized, err := json.MarshalIndent(info, "", "  ")
 		require.Nil(t, err)
 		ioutil.WriteFile(jsonPath, serialized, 0644)
 	}
 
-	expected := TorrentFile{}
+	expected := MetaInfo{}
 	format, err := ioutil.ReadFile(jsonPath)
 	require.Nil(t, err)
 	err = json.Unmarshal(format, &expected)
 	require.Nil(t, err)
 
-	assert.Equal(t, expected, torrent)
+	assert.Equal(t, expected, info)
 }
 
-func TestToTorrentFile(t *testing.T) {
+func TestToMetaInfo(t *testing.T) {
 	tests := map[string]struct {
 		input  *bencodeTorrent
-		output TorrentFile
+		output MetaInfo
 		fails  bool
 	}{
 		"correct input": {
@@ -50,7 +50,7 @@ func TestToTorrentFile(t *testing.T) {
 					Name:        "test.iso",
 				},
 			},
-			output: TorrentFile{
+			output: MetaInfo{
 				Announce: "http://test.tracker.org:6969/announce",
 				InfoHash: [20]byte{148, 102, 213, 85, 174, 246, 146, 126, 127, 246, 85, 15, 22, 6, 186, 128, 220, 105, 12, 15},
 				PieceHashes: [][20]byte{
@@ -73,13 +73,13 @@ func TestToTorrentFile(t *testing.T) {
 					Name:        "test.iso",
 				},
 			},
-			output: TorrentFile{},
+			output: MetaInfo{},
 			fails:  true,
 		},
 	}
 
 	for _, test := range tests {
-		tf, err := test.input.toTorrentFile()
+		tf, err := test.input.toMetaInfo()
 		if test.fails {
 			assert.NotNil(t, err)
 		} else {

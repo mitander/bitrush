@@ -18,26 +18,29 @@ type Peer struct {
 	Port uint16
 }
 
-func Unmarshal(bin []byte) ([]Peer, error) {
-	const size = 6           // peer size - 4 for ip, 2 for port
-	count := len(bin) / size // number of peers
-	if len(bin)%size != 0 {
-		err := fmt.Errorf("peer unmarshal failed: bin empty (bin: %d)", len(bin))
+func (p Peer) String() string {
+	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
+}
+
+func Unmarshal(b []byte) ([]Peer, error) {
+	// 4 bytes ip, 2 bytes port
+	const size = 6
+	count := len(b) / size
+	if len(b)%size != 0 {
+		err := fmt.Errorf("peer unmarshal failed: bin empty (bin: %d)", len(b))
 		return nil, err
 	}
 	peers := make([]Peer, count)
 	for i := 0; i < count; i++ {
 		offset := i * size
-		ip := offset + 4   // bin[offset:ip] is IP
-		port := offset + 6 // bin[ip:port] is Port
-		peers[i].IP = net.IP(bin[offset:ip])
-		peers[i].Port = binary.BigEndian.Uint16([]byte(bin[ip:port]))
+		ip := offset + 4
+		port := offset + 6
+
+		// IP: b[offset:ip] Port: b[ip:port]
+		peers[i].IP = net.IP(b[offset:ip])
+		peers[i].Port = binary.BigEndian.Uint16([]byte(b[ip:port]))
 	}
 	return peers, nil
-}
-
-func (p Peer) String() string {
-	return net.JoinHostPort(p.IP.String(), strconv.Itoa(int(p.Port)))
 }
 
 func GeneratePeerID() (PeerID, error) {

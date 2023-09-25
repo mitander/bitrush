@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mitander/bitrush/logger"
-	"github.com/mitander/bitrush/torrentfile"
+	"github.com/mitander/bitrush/metainfo"
 )
 
 var (
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	if *read != "" {
-		tf, err := torrentfile.OpenFile(*read)
+		tf, err := metainfo.OpenFile(*read)
 		if err != nil {
 			logger.Fatal(err)
 		}

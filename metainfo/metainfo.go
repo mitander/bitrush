@@ -1,4 +1,4 @@
-package torrentfile
+package metainfo
 
 import (
 	"bytes"
@@ -10,11 +10,10 @@ import (
 	"github.com/mitander/bitrush/logger"
 	"github.com/mitander/bitrush/p2p"
 	"github.com/mitander/bitrush/peers"
+	"github.com/mitander/bitrush/tracker"
 )
 
-const Port uint16 = 6889
-
-type TorrentFile struct {
+type MetaInfo struct {
 	Announce    string
 	InfoHash    [20]byte
 	PieceHashes [][20]byte
@@ -23,19 +22,19 @@ type TorrentFile struct {
 	Name        string
 }
 
-type bencodeTorrent struct {
+type torrentBencode struct {
 	Announce string      `bencode:"announce"`
-	Info     bencodeInfo `bencode:"info"`
+	Info     infoBencode `bencode:"info"`
 }
 
-type bencodeInfo struct {
+type infoBencode struct {
 	Name        string `bencode:"name"`
 	Length      int    `bencode:"length"`
 	Pieces      string `bencode:"pieces"`
 	PieceLength int    `bencode:"piece length"`
 }
 
-func (tf *TorrentFile) Download(path string) error {
+func (m *MetaInfo) Download(path string) error {
 	peerID, err := peers.GeneratePeerID()
 	if err != nil {
 		logger.Warning("Error generating peer id")
@@ -43,7 +42,8 @@ func (tf *TorrentFile) Download(path string) error {
 	}
 	logger.Info("generating peerID")
 
-	peers, err := tf.ReqPeers(peerID, Port)
+	tr, err := tracker.NewTracker(m.Announce, m.Length, m.InfoHash, peerID)
+	peers, err := tr.ReqPeers()
 	if err != nil {
 		logger.Warning("Error requesting peers")
 		return err
@@ -53,11 +53,11 @@ func (tf *TorrentFile) Download(path string) error {
 	t := p2p.Torrent{
 		Peers:       peers,
 		PeerID:      peerID,
-		InfoHash:    tf.InfoHash,
-		PieceHashes: tf.PieceHashes,
-		PieceLength: tf.PieceLength,
-		Length:      tf.Length,
-		Name:        tf.Name,
+		InfoHash:    m.InfoHash,
+		PieceHashes: m.PieceHashes,
+		PieceLength: m.PieceLength,
+		Length:      m.Length,
+		Name:        m.Name,
 	}
 
 	buf, err := t.Download()
@@ -75,22 +75,22 @@ func (tf *TorrentFile) Download(path string) error {
 	return nil
 }
 
-func OpenFile(path string) (TorrentFile, error) {
+func OpenFile(path string) (MetaInfo, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		logger.Warning("Error opening file")
-		return TorrentFile{}, err
+		return MetaInfo{}, err
 
 	}
 	defer file.Close()
 	logger.Info("opening file")
 
-	bct := bencodeTorrent{}
+	bct := torrentBencode{}
 	err = bencode.Unmarshal(file, &bct)
 	if err != nil {
-		return TorrentFile{}, err
+		return MetaInfo{}, err
 	}
-	return bct.toTorrentFile()
+	return bct.toMetaInfo()
 }
 
 func WriteFile(path string, buf []byte) error {
@@ -107,13 +107,13 @@ func WriteFile(path string, buf []byte) error {
 	return nil
 }
 
-func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
-	infoHash, pieceHashes, err := bct.Info.hashInfo()
+func (bct *torrentBencode) toMetaInfo() (MetaInfo, error) {
+	infoHash, pieceHashes, err := bct.Info.hash()
 	if err != nil {
-		return TorrentFile{}, err
+		return MetaInfo{}, err
 	}
 	logger.Info("creating TorrentFile")
-	return TorrentFile{
+	return MetaInfo{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
@@ -123,8 +123,8 @@ func (bct *bencodeTorrent) toTorrentFile() (TorrentFile, error) {
 	}, nil
 }
 
-func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
-	pieces := []byte(bci.Pieces)
+func (i *infoBencode) hash() ([20]byte, [][20]byte, error) {
+	pieces := []byte(i.Pieces)
 	hashLen := 20
 	numHashes := len(pieces) / hashLen
 	pieceHashes := make([][20]byte, numHashes)
@@ -138,7 +138,7 @@ func (bci *bencodeInfo) hashInfo() ([20]byte, [][20]byte, error) {
 	}
 
 	var info bytes.Buffer
-	err := bencode.Marshal(&info, *bci)
+	err := bencode.Marshal(&info, *i)
 	if err != nil {
 		return [20]byte{}, [][20]byte{}, err
 	}
