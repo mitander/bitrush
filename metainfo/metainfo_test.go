@@ -12,11 +12,11 @@ import (
 
 var write = flag.Bool("write", true, "overwrites json files")
 
-func TestOpenFile(t *testing.T) {
+func TestFromFile(t *testing.T) {
 	torrentPath := "./testdata/debian-10.9.0-amd64-netinst.iso.torrent"
 	jsonPath := "./testdata/debian-10.9.0-amd64-netinst.iso.json"
 
-	info, err := OpenFile(torrentPath)
+	info, err := FromFile(torrentPath)
 	require.Nil(t, err)
 
 	if *write {
@@ -25,7 +25,7 @@ func TestOpenFile(t *testing.T) {
 		os.WriteFile(jsonPath, serialized, 0644)
 	}
 
-	expected := MetaInfo{}
+	expected := &MetaInfo{}
 	format, err := os.ReadFile(jsonPath)
 	require.Nil(t, err)
 	err = json.Unmarshal(format, &expected)
@@ -37,7 +37,7 @@ func TestOpenFile(t *testing.T) {
 func TestToMetaInfo(t *testing.T) {
 	tests := map[string]struct {
 		input  *torrentBencode
-		output MetaInfo
+		output *MetaInfo
 		fails  bool
 	}{
 		"correct input": {
@@ -50,7 +50,7 @@ func TestToMetaInfo(t *testing.T) {
 					Name:        "test.iso",
 				},
 			},
-			output: MetaInfo{
+			output: &MetaInfo{
 				Announce: "http://test.tracker.org:6969/announce",
 				InfoHash: [20]byte{148, 102, 213, 85, 174, 246, 146, 126, 127, 246, 85, 15, 22, 6, 186, 128, 220, 105, 12, 15},
 				PieceHashes: [][20]byte{
@@ -73,7 +73,7 @@ func TestToMetaInfo(t *testing.T) {
 					Name:        "test.iso",
 				},
 			},
-			output: MetaInfo{},
+			output: nil,
 			fails:  true,
 		},
 	}
