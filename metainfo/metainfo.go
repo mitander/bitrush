@@ -63,12 +63,8 @@ func (m *MetaInfo) Download(path string) error {
 		Name:        m.Name,
 	}
 
-	buf := t.Download()
-
-	// TODO: Write continiously to file, this keeps file content in memory
-	// until everything is downloaded..
-	filePath := filepath.Join(path, m.Name)
-	err = WriteFile(filePath, buf)
+	path = filepath.Join(path, m.Name)
+	err = t.Download(path)
 	if err != nil {
 		return err
 	}
@@ -77,44 +73,30 @@ func (m *MetaInfo) Download(path string) error {
 	return nil
 }
 
-func OpenFile(path string) (MetaInfo, error) {
+func FromFile(path string) (*MetaInfo, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to open file")
-		return MetaInfo{}, err
+		return nil, err
 
 	}
 	defer file.Close()
-	log.Debug("opening file")
 
 	bct := torrentBencode{}
 	err = bencode.Unmarshal(file, &bct)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to unmarshal bencode from file")
-		return MetaInfo{}, err
+		return nil, err
 	}
 	return bct.toMetaInfo()
 }
 
-func WriteFile(path string, buf []byte) error {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	_, err = file.Write(buf)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (bct *torrentBencode) toMetaInfo() (MetaInfo, error) {
+func (bct *torrentBencode) toMetaInfo() (*MetaInfo, error) {
 	infoHash, pieceHashes, err := bct.Info.hash()
 	if err != nil {
-		return MetaInfo{}, err
+		return nil, err
 	}
-	m := MetaInfo{
+	m := &MetaInfo{
 		Announce:    bct.Announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,

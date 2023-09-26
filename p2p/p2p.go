@@ -10,6 +10,7 @@ import (
 	"github.com/mitander/bitrush/client"
 	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
+	"github.com/mitander/bitrush/storage"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,10 +47,16 @@ type pieceState struct {
 	backlog    int
 }
 
-func (t *Torrent) Download() []byte {
+func (t *Torrent) Download(path string) error {
 	hashes := t.PieceHashes
 	queue := make(chan *pieceWork, len(hashes))
 	results := make(chan *pieceResult)
+
+	sw, err := storage.NewStorageWorker(path)
+	if err != nil {
+		return err
+	}
+	go sw.StartWorker()
 
 	for index, hash := range hashes {
 		begin, end := t.pieceBounds(index)
@@ -63,21 +70,23 @@ func (t *Torrent) Download() []byte {
 		go t.startWorker(peer, queue, results)
 	}
 
-	buf := make([]byte, t.Length)
 	donePieces := 0
 	for donePieces < len(hashes) {
 		res := <-results
-		begin, end := t.pieceBounds(res.index)
-		copy(buf[begin:end], res.buf)
-		donePieces++
-		workers := runtime.NumGoroutine() - 1
+		begin, _ := t.pieceBounds(res.index)
 
+		sw.Queue <- storage.StorageWork{Data: res.buf, Index: int64(begin)}
+		donePieces++
+
+		workers := runtime.NumGoroutine() - 2
 		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
 		log.Infof("Downloaded: %0.2f%% - Peers: %d\n", percent, workers)
 	}
+	sw.Exit <- 0
 	close(queue)
+	close(results)
 	log.Debug("closing client")
-	return buf
+	return nil
 }
 
 func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results chan *pieceResult) {

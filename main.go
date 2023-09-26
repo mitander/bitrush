@@ -32,7 +32,7 @@ func main() {
 	}
 
 	if *read != "" {
-		tf, err := metainfo.OpenFile(*read)
+		tf, err := metainfo.FromFile(*read)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -51,27 +51,22 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 }
 
 func (c *Client) SendRequest(index, begin, length int) error {
-	log.Debug("sending 'request'")
 	return c.send(message.FormatRequestMsg(index, begin, length))
 }
 
 func (c *Client) SendHave(index int) error {
-	log.Debug("sending 'have'")
 	return c.send(message.FormatHaveMsg(index))
 }
 
 func (c *Client) SendInterested() error {
-	log.Debug("sending 'interested'")
 	return c.send(&message.Message{ID: message.MsgInterested})
 }
 
 func (c *Client) SendNotInterested() error {
-	log.Debug("sending 'not interested'")
 	return c.send(&message.Message{ID: message.MsgNotInterested})
 }
 
 func (c *Client) SendUnchoke() error {
-	log.Debug("sending 'unchoke'")
 	return c.send(&(message.Message{ID: message.MsgUnchoke}))
 }
 
