@@ -189,7 +189,7 @@ func TestRead(t *testing.T) {
 		},
 		"keep-alive message": {
 			input:  []byte{0, 0, 0, 0},
-			output: nil,
+			output: &Message{ID: MsgKeepAlive, Payload: nil},
 			fails:  false,
 		},
 		"invalid length: too short": {

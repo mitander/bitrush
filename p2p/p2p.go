@@ -177,11 +177,9 @@ func (state *pieceState) readMessage() error {
 		return err
 	}
 
-	if msg == nil { // keep nil messages alive
-		return nil
-	}
-
 	switch msg.ID {
+	case message.MsgKeepAlive:
+		break
 	case message.MsgUnchoke:
 		state.client.Choked = false
 	case message.MsgChoke:

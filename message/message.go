@@ -35,6 +35,7 @@ const (
 	MsgRequest       messageID = 6
 	MsgPiece         messageID = 7
 	MsgCancel        messageID = 8
+	MsgKeepAlive     messageID = 9
 )
 
 func FormatRequestMsg(index, begin, length int) *Message {
@@ -124,10 +125,12 @@ func Read(r io.Reader) (*Message, error) {
 		return nil, err
 	}
 	length := binary.BigEndian.Uint32(lengthBuf)
+
 	if length == 0 {
-		err := errors.New("length cannot be 0")
-		log.Error(err.Error())
-		return nil, err
+		return &Message{
+			ID:      MsgKeepAlive,
+			Payload: nil,
+		}, nil
 	}
 	msgBuf := make([]byte, length)
 	_, err = io.ReadFull(r, msgBuf)
