@@ -1,11 +1,10 @@
-package bitfield
+package p2p
 
 import (
 	"errors"
 	"net"
 	"time"
 
-	"github.com/mitander/bitrush/message"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,7 +35,7 @@ func RecvBitfield(conn net.Conn) (Bitfield, error) {
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 	defer conn.SetDeadline(time.Time{})
 
-	msg, err := message.Read(conn)
+	msg, err := ReadMessage(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func RecvBitfield(conn net.Conn) (Bitfield, error) {
 		return nil, errors.New("invalid bitfield received: msg is nil")
 	}
 
-	if msg.ID != message.MsgBitfield {
+	if msg.ID != MsgBitfield {
 		return nil, errors.New("invalid bitfield received: wrong id")
 	}
 

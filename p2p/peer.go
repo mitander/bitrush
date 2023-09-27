@@ -1,7 +1,6 @@
-package peers
+package p2p
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -9,11 +8,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 )
-
-// http://www.bittorrent.org/beps/bep_0020.html
-var peerIDPrefix = []byte("-BR0001-")
-
-type PeerID [20]byte
 
 type Peer struct {
 	IP   net.IP
@@ -44,15 +38,4 @@ func Unmarshal(b []byte) ([]Peer, error) {
 		peers[i].Port = binary.BigEndian.Uint16([]byte(b[ip:port]))
 	}
 	return peers, nil
-}
-
-func GeneratePeerID() (PeerID, error) {
-	var id PeerID
-	copy(id[:], peerIDPrefix)
-	_, err := rand.Read(id[len(peerIDPrefix):])
-	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to generate peer id")
-		return PeerID{}, err
-	}
-	return id, nil
 }

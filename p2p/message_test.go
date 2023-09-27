@@ -1,4 +1,4 @@
-package message
+package p2p
 
 import (
 	"bytes"
@@ -176,7 +176,7 @@ func TestParsePieceMsg(t *testing.T) {
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestReadMessage(t *testing.T) {
 	tests := map[string]struct {
 		input  []byte
 		output *Message
@@ -206,7 +206,7 @@ func TestRead(t *testing.T) {
 
 	for _, test := range tests {
 		reader := bytes.NewReader(test.input)
-		m, err := Read(reader)
+		m, err := ReadMessage(reader)
 		if test.fails {
 			assert.NotNil(t, err)
 		} else {

@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFromFile(t *testing.T) {
+func TestNewMetaInfo(t *testing.T) {
 	torrentPath := "./testdata/debian-10.9.0-amd64-netinst.iso.torrent"
 	jsonPath := "./testdata/debian-10.9.0-amd64-netinst.iso.json"
 
-	info, err := FromFile(torrentPath)
+	info, err := NewMetaInfo(torrentPath)
 	require.Nil(t, err)
 
 	if false {

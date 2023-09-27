@@ -5,12 +5,8 @@ import (
 	"crypto/sha1"
 	"errors"
 	"os"
-	"path/filepath"
 
 	bencode "github.com/jackpal/bencode-go"
-	"github.com/mitander/bitrush/p2p"
-	"github.com/mitander/bitrush/peers"
-	"github.com/mitander/bitrush/tracker"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,49 +32,7 @@ type bencodeInfo struct {
 	PieceLength int    `bencode:"piece length"`
 }
 
-func (m *MetaInfo) Download(path string) error {
-	peerID, err := peers.GeneratePeerID()
-	if err != nil {
-		return err
-	}
-	log.Debug("generating peer id")
-
-	log.Debug("requesting peers")
-	var peers []peers.Peer
-
-	for i := range m.Announce {
-		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, peerID)
-		if err != nil {
-			return err
-		}
-		p, err := tr.ReqPeers()
-		peers = append(peers, p...)
-		if err != nil {
-			return err
-		}
-	}
-
-	t := p2p.Torrent{
-		Peers:       peers,
-		PeerID:      peerID,
-		InfoHash:    m.InfoHash,
-		PieceHashes: m.PieceHashes,
-		PieceLength: m.PieceLength,
-		Length:      m.Length,
-		Name:        m.Name,
-	}
-
-	path = filepath.Join(path, m.Name)
-	err = t.Download(path)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Writing torrent to file: %s", path)
-	return nil
-}
-
-func FromFile(path string) (*MetaInfo, error) {
+func NewMetaInfo(path string) (*MetaInfo, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to open file")

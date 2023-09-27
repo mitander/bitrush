@@ -1,4 +1,4 @@
-package bitfield
+package p2p
 
 import (
 	"testing"

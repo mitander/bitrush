@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/mitander/bitrush/metainfo"
+	"github.com/mitander/bitrush/torrent"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -32,12 +33,14 @@ func main() {
 	}
 
 	if *read != "" {
-		tf, err := metainfo.FromFile(*read)
+		m, err := metainfo.NewMetaInfo(*read)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = tf.Download(*write)
+		t, err := torrent.NewTorrent(m)
+
+		err = t.Download(*write)
 		if err != nil {
 			log.Fatal(err)
 		}

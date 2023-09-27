@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackpal/bencode-go"
-	"github.com/mitander/bitrush/peers"
+	"github.com/mitander/bitrush/p2p"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,6 +17,7 @@ type Tracker struct {
 	Announce string
 	Query    string
 	PeerId   [20]byte
+	InfoHash [20]byte
 }
 
 func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte) (Tracker, error) {
@@ -42,6 +43,7 @@ func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte)
 		Announce: announce,
 		Query:    u.String(),
 		PeerId:   peerId,
+		InfoHash: infoHash,
 	}, nil
 }
 
@@ -50,7 +52,7 @@ type trackerRes struct {
 	Peers    string `bencode:"peers"`
 }
 
-func (t *Tracker) ReqPeers() ([]peers.Peer, error) {
+func (t *Tracker) ReqPeers() ([]p2p.Peer, error) {
 	c := &http.Client{Timeout: 15 * time.Second}
 	res, err := c.Get(t.Query)
 	if err != nil {
@@ -64,5 +66,5 @@ func (t *Tracker) ReqPeers() ([]peers.Peer, error) {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to unmarshal bencode")
 		return nil, err
 	}
-	return peers.Unmarshal([]byte(response.Peers))
+	return p2p.Unmarshal([]byte(response.Peers))
 }
