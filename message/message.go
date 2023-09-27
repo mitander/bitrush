@@ -60,12 +60,12 @@ func FormatHaveMsg(index int) *Message {
 
 func ParseHaveMsg(msg *Message) (int, error) {
 	if msg.ID != MsgHave {
-		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgHave}).Error(InvalidMessageId.Error())
+		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgHave}).Debug(InvalidMessageId.Error())
 		return 0, InvalidMessageId
 	}
 
 	if len(msg.Payload) != 4 {
-		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 4}).Error(InvalidPayloadLength.Error())
+		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 4}).Debug(InvalidPayloadLength.Error())
 		return 0, InvalidPayloadLength
 	}
 	index := int(binary.BigEndian.Uint32(msg.Payload))
@@ -74,30 +74,30 @@ func ParseHaveMsg(msg *Message) (int, error) {
 
 func ParsePieceMsg(index int, buf []byte, msg *Message) (int, error) {
 	if msg.ID != MsgPiece {
-		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgPiece}).Error(InvalidMessageId.Error())
+		log.WithFields(log.Fields{"got": msg.ID, "expected": MsgPiece}).Debug(InvalidMessageId.Error())
 		return 0, InvalidMessageId
 	}
 
 	if len(msg.Payload) < 8 {
-		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 8}).Error(InvalidPayloadLength.Error())
+		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 8}).Debug(InvalidPayloadLength.Error())
 		return 0, InvalidPayloadLength
 	}
 
 	parsedIndex := int(binary.BigEndian.Uint32(msg.Payload[0:4]))
 	if parsedIndex != index {
-		log.WithFields(log.Fields{"got": parsedIndex, "expected": index}).Error(InvalidMessageIndex.Error())
+		log.WithFields(log.Fields{"got": parsedIndex, "expected": index}).Debug(InvalidMessageIndex.Error())
 		return 0, InvalidMessageIndex
 	}
 
 	begin := int(binary.BigEndian.Uint32(msg.Payload[4:8]))
 	if begin >= len(buf) {
-		log.WithFields(log.Fields{"got": begin, "expected-over": len(buf)}).Error(InvalidBufferLength.Error())
+		log.WithFields(log.Fields{"got": begin, "expected-over": len(buf)}).Debug(InvalidBufferLength.Error())
 		return 0, InvalidBufferLength
 	}
 
 	data := msg.Payload[8:]
 	if begin+len(data) > len(buf) {
-		log.WithFields(log.Fields{"got": begin + len(data), "expected-over": len(buf)}).Error(InvalidDataLength.Error())
+		log.WithFields(log.Fields{"got": begin + len(data), "expected-over": len(buf)}).Debug(InvalidDataLength.Error())
 		return 0, InvalidDataLength
 	}
 
@@ -119,25 +119,26 @@ func (msg *Message) Serialize() []byte {
 
 func Read(r io.Reader) (*Message, error) {
 	lengthBuf := make([]byte, 4)
+
 	_, err := io.ReadFull(r, lengthBuf)
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
 		return nil, err
 	}
-	length := binary.BigEndian.Uint32(lengthBuf)
 
+	length := binary.BigEndian.Uint32(lengthBuf)
 	if length == 0 {
 		return &Message{
 			ID:      MsgKeepAlive,
 			Payload: nil,
 		}, nil
 	}
+
 	msgBuf := make([]byte, length)
 	_, err = io.ReadFull(r, msgBuf)
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
 		return nil, err
 	}
+
 	return &Message{
 		ID:      messageID(msgBuf[0]),
 		Payload: msgBuf[1:],

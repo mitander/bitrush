@@ -71,14 +71,12 @@ func read(r io.Reader) (*Handshake, error) {
 
 	_, err = io.ReadFull(r, bufLen)
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed reading to buffer")
 		return nil, err
 	}
 
 	pstrlen := int(bufLen[0])
 	if pstrlen == 0 {
 		err := errors.New("pstrlen cannot be 0 ")
-		log.Error(err.Error())
 		return nil, err
 	}
 

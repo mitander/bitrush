@@ -93,7 +93,6 @@ func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results ch
 	// create a new client for every peer
 	c, err := client.New(peer, t.PeerID, t.InfoHash)
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error(), "peer": peer.String()}).Warn("worker failed to create client")
 		return
 	}
 	defer c.Conn.Close()
@@ -103,7 +102,7 @@ func (t *Torrent) startWorker(peer peers.Peer, queue chan *pieceWork, results ch
 
 	for pw := range queue {
 		if !c.Bitfield.HasPiece(pw.index) {
-			queue <- pw // put piece back in queue
+			queue <- pw
 			log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
 			continue
 		}

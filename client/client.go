@@ -24,7 +24,6 @@ func New(peer peers.Peer, peerID, infoHash [20]byte) (*Client, error) {
 	// should not take more than 3 seconds to establish connection
 	conn, err := net.DialTimeout("tcp", peer.String(), 3*time.Second)
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error(), "peer": peer.String()}).Error("failed to connect to peer")
 		return nil, err
 	}
 
