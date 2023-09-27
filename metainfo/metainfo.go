@@ -15,7 +15,7 @@ import (
 )
 
 type MetaInfo struct {
-	Announce    string
+	Announce    []string
 	InfoHash    [20]byte
 	PieceHashes [][20]byte
 	PieceLength int
@@ -23,12 +23,13 @@ type MetaInfo struct {
 	Name        string
 }
 
-type torrentBencode struct {
-	Announce string      `bencode:"announce"`
-	Info     infoBencode `bencode:"info"`
+type bencodeTorrent struct {
+	Announce     string      `bencode:"announce"`
+	AnnounceList []string    `bencode:"announce-list"`
+	Info         bencodeInfo `bencode:"info"`
 }
 
-type infoBencode struct {
+type bencodeInfo struct {
 	Name        string `bencode:"name"`
 	Length      int    `bencode:"length"`
 	Pieces      string `bencode:"pieces"`
@@ -42,15 +43,19 @@ func (m *MetaInfo) Download(path string) error {
 	}
 	log.Debug("generating peer id")
 
-	tr, err := tracker.NewTracker(m.Announce, m.Length, m.InfoHash, peerID)
-	if err != nil {
-		return err
-	}
-
 	log.Debug("requesting peers")
-	peers, err := tr.ReqPeers()
-	if err != nil {
-		return err
+	var peers []peers.Peer
+
+	for i := range m.Announce {
+		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, peerID)
+		if err != nil {
+			return err
+		}
+		p, err := tr.ReqPeers()
+		peers = append(peers, p...)
+		if err != nil {
+			return err
+		}
 	}
 
 	t := p2p.Torrent{
@@ -82,7 +87,7 @@ func FromFile(path string) (*MetaInfo, error) {
 	}
 	defer file.Close()
 
-	bct := torrentBencode{}
+	bct := bencodeTorrent{}
 	err = bencode.Unmarshal(file, &bct)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to unmarshal bencode from file")
@@ -91,13 +96,21 @@ func FromFile(path string) (*MetaInfo, error) {
 	return bct.toMetaInfo()
 }
 
-func (bct *torrentBencode) toMetaInfo() (*MetaInfo, error) {
+func (bct *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
 	infoHash, pieceHashes, err := bct.Info.hash()
 	if err != nil {
 		return nil, err
 	}
+
+	var announce []string
+	if len(bct.AnnounceList) != 0 {
+		announce = append(announce, bct.AnnounceList...)
+	} else {
+		announce = append(bct.AnnounceList, bct.Announce)
+	}
+
 	m := &MetaInfo{
-		Announce:    bct.Announce,
+		Announce:    announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
 		PieceLength: bct.Info.PieceLength,
@@ -105,10 +118,11 @@ func (bct *torrentBencode) toMetaInfo() (*MetaInfo, error) {
 		Name:        bct.Info.Name,
 	}
 	log.Debugf("created torrent meta info: %s", bct.Info.Name)
+
 	return m, nil
 }
 
-func (i *infoBencode) hash() ([20]byte, [][20]byte, error) {
+func (i *bencodeInfo) hash() ([20]byte, [][20]byte, error) {
 	pieces := []byte(i.Pieces)
 	hashLen := 20
 	numHashes := len(pieces) / hashLen
