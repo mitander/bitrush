@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/mitander/bitrush/message"
 	"github.com/mitander/bitrush/peers"
 	"github.com/mitander/bitrush/storage"
+	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -70,6 +72,12 @@ func (t *Torrent) Download(path string) error {
 		go t.startWorker(peer, queue, results)
 	}
 
+	var bar *progressbar.ProgressBar
+	render := log.GetLevel() != log.DebugLevel
+	if render {
+		bar = progressbar.Default(100, "Downloading with 0 workers")
+	}
+
 	donePieces := 0
 	for donePieces < len(hashes) {
 		res := <-results
@@ -78,9 +86,10 @@ func (t *Torrent) Download(path string) error {
 		sw.Queue <- storage.StorageWork{Data: res.buf, Index: int64(begin)}
 		donePieces++
 
-		workers := runtime.NumGoroutine() - 2
-		percent := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-		log.Infof("Downloaded: %0.2f%% - Peers: %d\n", percent, workers)
+		if render {
+			bar.Describe(fmt.Sprintf("Downloading with %d workers", runtime.NumGoroutine()-2))
+			bar.Set(int(float64(donePieces) / float64(len(t.PieceHashes)) * 100))
+		}
 	}
 	sw.Exit <- 0
 	close(queue)
