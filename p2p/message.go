@@ -68,6 +68,7 @@ func ParseHaveMsg(msg *Message) (int, error) {
 		log.WithFields(log.Fields{"got": len(msg.Payload), "expected": 4}).Debug(InvalidPayloadLength.Error())
 		return 0, InvalidPayloadLength
 	}
+
 	index := int(binary.BigEndian.Uint32(msg.Payload))
 	return index, nil
 }
@@ -105,15 +106,15 @@ func ParsePieceMsg(index int, buf []byte, msg *Message) (int, error) {
 	return len(data), nil
 }
 
-func (msg *Message) Serialize() []byte {
-	if msg == nil {
+func (m *Message) Serialize() []byte {
+	if m == nil {
 		return make([]byte, 4)
 	}
-	length := uint32(len(msg.Payload) + 1) // Payload + messageID
+	length := uint32(len(m.Payload) + 1) // Payload + messageID
 	buf := make([]byte, 4+length)
 	binary.BigEndian.PutUint32(buf[0:4], length)
-	buf[4] = byte(msg.ID)
-	copy(buf[5:], msg.Payload)
+	buf[4] = byte(m.ID)
+	copy(buf[5:], m.Payload)
 	return buf
 }
 
@@ -145,11 +146,11 @@ func ReadMessage(r io.Reader) (*Message, error) {
 	}, nil
 }
 
-func (msg *Message) name() string {
-	if msg.Payload == nil {
+func (m *Message) name() string {
+	if m.Payload == nil {
 		return "KeepAlive"
 	}
-	switch msg.ID {
+	switch m.ID {
 	case MsgChoke:
 		return "Choke"
 	case MsgUnchoke:
@@ -169,13 +170,13 @@ func (msg *Message) name() string {
 	case MsgCancel:
 		return "Cancel"
 	default:
-		return fmt.Sprintf("!%d", msg.ID)
+		return fmt.Sprintf("!%d", m.ID)
 	}
 }
 
-func (msg *Message) String() string {
-	if msg == nil {
-		return msg.name()
+func (m *Message) String() string {
+	if m == nil {
+		return m.name()
 	}
-	return fmt.Sprintf("%s: %d", msg.name(), len(msg.Payload))
+	return fmt.Sprintf("%s: %d", m.name(), len(m.Payload))
 }

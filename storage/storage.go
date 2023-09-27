@@ -31,32 +31,32 @@ func NewStorageWorker(path string) (*StorageWorker, error) {
 	}, nil
 }
 
-func (sw *StorageWorker) StartWorker() {
+func (s *StorageWorker) StartWorker() {
 	for {
 		select {
-		case w := <-sw.Queue:
-			_, err := sw.file.Seek(w.Index, 0)
+		case w := <-s.Queue:
+			_, err := s.file.Seek(w.Index, 0)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"reason": err.Error(),
 				}).Error("failed to seek file, putting work back in queue")
-				sw.Queue <- w
+				s.Queue <- w
 			}
-			l, err := sw.file.Write(w.Data)
+			l, err := s.file.Write(w.Data)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"reason": err.Error(),
 				}).Error("failed writing to file")
-				sw.Queue <- w
+				s.Queue <- w
 			}
 
 			log.Debugf("wrote %d bytes to index %d", l, w.Index)
 			continue
-		case <-sw.Exit:
+		case <-s.Exit:
 			log.Debug("received exit signal, exiting storage worker")
-			close(sw.Queue)
-			close(sw.Exit)
-			_ = sw.file.Close()
+			close(s.Queue)
+			close(s.Exit)
+			_ = s.file.Close()
 			return
 		}
 	}

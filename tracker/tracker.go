@@ -27,7 +27,6 @@ func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte)
 		return Tracker{}, err
 	}
 
-	// url.Values requires map[]string
 	p := url.Values{
 		"info_hash":  []string{string(infoHash[:])},
 		"peer_id":    []string{string(peerId[:])},
@@ -47,7 +46,7 @@ func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte)
 	}, nil
 }
 
-type trackerRes struct {
+type bencodeResponse struct {
 	Interval int    `bencode:"interval"`
 	Peers    string `bencode:"peers"`
 }
@@ -60,7 +59,7 @@ func (t *Tracker) ReqPeers() ([]p2p.Peer, error) {
 	}
 	defer res.Body.Close()
 
-	response := trackerRes{}
+	response := bencodeResponse{}
 	err = bencode.Unmarshal(res.Body, &response)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to unmarshal bencode")

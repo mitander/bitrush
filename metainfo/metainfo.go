@@ -41,43 +41,43 @@ func NewMetaInfo(path string) (*MetaInfo, error) {
 	}
 	defer file.Close()
 
-	bct := bencodeTorrent{}
-	err = bencode.Unmarshal(file, &bct)
+	bt := bencodeTorrent{}
+	err = bencode.Unmarshal(file, &bt)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to unmarshal bencode from file")
 		return nil, err
 	}
-	return bct.toMetaInfo()
+	return bt.toMetaInfo()
 }
 
-func (bct *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
-	infoHash, pieceHashes, err := bct.Info.hash()
+func (bt *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
+	infoHash, pieceHashes, err := bt.Info.hash()
 	if err != nil {
 		return nil, err
 	}
 
 	var announce []string
-	if len(bct.AnnounceList) != 0 {
-		announce = append(announce, bct.AnnounceList...)
+	if len(bt.AnnounceList) != 0 {
+		announce = append(announce, bt.AnnounceList...)
 	} else {
-		announce = append(bct.AnnounceList, bct.Announce)
+		announce = append(bt.AnnounceList, bt.Announce)
 	}
 
 	m := &MetaInfo{
 		Announce:    announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
-		PieceLength: bct.Info.PieceLength,
-		Length:      bct.Info.Length,
-		Name:        bct.Info.Name,
+		PieceLength: bt.Info.PieceLength,
+		Length:      bt.Info.Length,
+		Name:        bt.Info.Name,
 	}
-	log.Debugf("created torrent meta info: %s", bct.Info.Name)
+	log.Debugf("created torrent meta info: %s", bt.Info.Name)
 
 	return m, nil
 }
 
-func (i *bencodeInfo) hash() ([20]byte, [][20]byte, error) {
-	pieces := []byte(i.Pieces)
+func (bi *bencodeInfo) hash() ([20]byte, [][20]byte, error) {
+	pieces := []byte(bi.Pieces)
 	hashLen := 20
 	numHashes := len(pieces) / hashLen
 	pieceHashes := make([][20]byte, numHashes)
@@ -92,7 +92,7 @@ func (i *bencodeInfo) hash() ([20]byte, [][20]byte, error) {
 	}
 
 	var info bytes.Buffer
-	err := bencode.Marshal(&info, *i)
+	err := bencode.Marshal(&info, *bi)
 	if err != nil {
 		return [20]byte{}, [][20]byte{}, err
 	}

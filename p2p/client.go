@@ -122,8 +122,8 @@ type pieceState struct {
 	backlog    int
 }
 
-func (state *pieceState) readMessage() error {
-	msg, err := ReadMessage(state.client.Conn)
+func (s *pieceState) readMessage() error {
+	msg, err := ReadMessage(s.client.Conn)
 	if err != nil {
 		return err
 	}
@@ -132,22 +132,22 @@ func (state *pieceState) readMessage() error {
 	case MsgKeepAlive:
 		break
 	case MsgUnchoke:
-		state.client.Choked = false
+		s.client.Choked = false
 	case MsgChoke:
-		state.client.Choked = true
+		s.client.Choked = true
 	case MsgHave:
 		i, err := ParseHaveMsg(msg)
 		if err != nil {
 			return err
 		}
-		state.client.Bitfield.SetPiece(i)
+		s.client.Bitfield.SetPiece(i)
 	case MsgPiece:
-		n, err := ParsePieceMsg(state.index, state.buf, msg)
+		n, err := ParsePieceMsg(s.index, s.buf, msg)
 		if err != nil {
 			return err
 		}
-		state.downloaded += n
-		state.backlog--
+		s.downloaded += n
+		s.backlog--
 	}
 	return nil
 }

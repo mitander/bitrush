@@ -34,10 +34,12 @@ func (h *Handshake) Send(conn net.Conn) (*Handshake, error) {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to send handshake")
 		return nil, err
 	}
+
 	res, err := ReadHandshake(conn)
 	if err != nil {
 		return nil, err
 	}
+
 	if !bytes.Equal(res.InfoHash[:], h.InfoHash[:]) {
 		err := errors.New("invalid info hash")
 		log.WithFields(log.Fields{"got": res.InfoHash, "expected": h.InfoHash}).Error(err.Error())

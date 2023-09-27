@@ -10,24 +10,25 @@ import (
 
 type Bitfield []byte
 
-func (bf Bitfield) HasPiece(index int) bool {
+func (b Bitfield) HasPiece(index int) bool {
 	byteIndex := index / 8
 	offset := index % 8
-	if byteIndex < 0 || byteIndex >= len(bf) {
+	if byteIndex < 0 || byteIndex >= len(b) {
+		log.Warnf("failed to set piece: invalid byte index: %d", byteIndex)
 		return false
 	}
-	return bf[byteIndex]>>uint(7-offset)&1 != 0
+	return b[byteIndex]>>uint(7-offset)&1 != 0
 }
 
-func (bf Bitfield) SetPiece(index int) {
+func (b Bitfield) SetPiece(index int) {
 	byteIndex := index / 8
 	offset := index % 8
 
-	if byteIndex < 0 || byteIndex >= len(bf) {
+	if byteIndex < 0 || byteIndex >= len(b) {
 		log.Warnf("failed to set piece: invalid byte index: %d", byteIndex)
 		return
 	}
-	bf[byteIndex] |= 1 << uint(7-offset)
+	b[byteIndex] |= 1 << uint(7-offset)
 }
 
 func RecvBitfield(conn net.Conn) (Bitfield, error) {

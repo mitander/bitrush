@@ -27,6 +27,7 @@ func Unmarshal(b []byte) ([]Peer, error) {
 		log.Error(err.Error())
 		return nil, err
 	}
+
 	peers := make([]Peer, count)
 	for i := 0; i < count; i++ {
 		offset := i * size

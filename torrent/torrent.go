@@ -44,9 +44,9 @@ type pieceWork struct {
 	length int
 }
 
-func (pw *pieceWork) validate(buf []byte) error {
+func (p *pieceWork) validate(buf []byte) error {
 	hash := sha1.Sum(buf)
-	if !bytes.Equal(hash[:], pw.hash[:]) {
+	if !bytes.Equal(hash[:], p.hash[:]) {
 		err := errors.New("piece work validation failed")
 		log.Error(err.Error())
 		return err

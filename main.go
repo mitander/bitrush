@@ -39,6 +39,9 @@ func main() {
 		}
 
 		t, err := torrent.NewTorrent(m)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		err = t.Download(*write)
 		if err != nil {
