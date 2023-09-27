@@ -1,58 +1,41 @@
-# BitRush
-A minimal BitTorrent CLI client written in Golang
+# bitrush
+A minimal BitTorrent library written in Go
 
+## Disclaimer
+This project is work in progress and shouldn't be used to do *anything* remotely serious
 
 ## Installation
-
-* Install package
-```bash
-go install "github.com/mitander/bitrush"
+* Binary
+```shell
+$ go install github.com/mitander/bitrush
+```
+* Library
+```shell
+$ go get -u github.com/mitander/bitrush
 ```
 
 ## Usage
-
-**CLI**
-* Download torrent file
-```go
-bitrush -f debian.iso.torrent -o debian.iso
+* Binary
+```shell
+$ bitrush -f <path-to-torrent-file>
 ```
+* Library
+```go
+path := "example.torrent"
+m, err := metainfo.NewMetaInfo(path)
+if err != nil {
+    log.Fatal(err)
+}
 
-* Commands
-```go
--h help
--f input file
--o output file (default: current directory)
--d debug mode
-```
+t, err := torrent.NewTorrent(m)
+if err != nil {
+    log.Fatal(err)
+}
 
-**Library**
-
-* Install package
-```go
-go get "github.com/mitander/bitrush"
-```
-* Import package
-```go
-import "github.com/mitander/bitrush"
-```
-* Open torrent file
-```go
-path := "./torrentfile/testdata/debian.torrent"
-tf, err := torrentfile.toTorrentFile(path)
+err = t.Download()
 if err != nil {
     log.Fatal(err)
 }
 ```
-
-* Download Torrent
-```go
-path := "debian.iso"
-err := tf.Download(path)
-if err != nil {
-    log.Fatal(err)
-}
-```
-
 ## License
 [MIT License](LICENSE).
-
