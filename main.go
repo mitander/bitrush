@@ -13,7 +13,7 @@ import (
 
 var (
 	read  = flag.String("f", "", "open .torrent file")
-	write = flag.String("o", ".", "download location")
+	write = flag.String("o", "out", "download directory")
 	help  = flag.Bool("h", false, "show help")
 	debug = flag.Bool("d", false, "enable debug mode")
 )

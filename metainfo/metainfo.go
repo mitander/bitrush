@@ -74,6 +74,7 @@ func (bt *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
 	var length int
 	var files []storage.File
 	if len(bt.Info.Files) != 0 {
+		// root folder
 		files = append(files, storage.File{Path: bt.Info.Name, Length: 0})
 		for _, f := range bt.Info.Files {
 			files = append(files, storage.File{Path: f.Path, Length: f.Length})

@@ -14,5 +14,8 @@
 # Bitrush binary
 bitrush
 
+# Default download output
+/out
+
 # ISO files
 *.iso

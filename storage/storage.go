@@ -26,7 +26,14 @@ type StorageWorker struct {
 }
 
 func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
+	err := os.Mkdir(dir, 0755)
+	if err != nil {
+		if !os.IsExist(err) {
+			log.Fatal(err)
+		}
+	}
 	if len(files) > 1 {
+		// root folder
 		dir = filepath.Join(dir, files[0].Path)
 		err := os.Mkdir(filepath.Join(dir, files[0].Path), 0755)
 		if err != nil {
