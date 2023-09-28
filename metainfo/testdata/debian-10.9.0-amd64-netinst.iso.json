@@ -29684,5 +29684,11 @@
   ],
   "PieceLength": 262144,
   "Length": 353370112,
-  "Name": "debian-10.9.0-amd64-netinst.iso"
+  "Name": "debian-10.9.0-amd64-netinst.iso",
+  "Files": [
+    {
+      "Path": "debian-10.9.0-amd64-netinst.iso",
+      "Length": 353370112
+    }
+  ]
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mitander/bitrush/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +17,7 @@ func TestNewMetaInfo(t *testing.T) {
 	info, err := NewMetaInfo(torrentPath)
 	require.Nil(t, err)
 
-	if false {
+	if true {
 		// overwrite expected output json
 		serialized, err := json.MarshalIndent(info, "", "  ")
 		require.Nil(t, err)
@@ -46,6 +47,7 @@ func TestToMetaInfo(t *testing.T) {
 					PieceLength: 262144,
 					Length:      351272960,
 					Name:        "test.iso",
+					Files:       []bencodeFile{},
 				},
 			},
 			output: &MetaInfo{
@@ -58,6 +60,7 @@ func TestToMetaInfo(t *testing.T) {
 				PieceLength: 262144,
 				Length:      351272960,
 				Name:        "test.iso",
+				Files:       []storage.File{{Path: "test.iso", Length: 351272960}},
 			},
 			fails: false,
 		},
@@ -69,6 +72,7 @@ func TestToMetaInfo(t *testing.T) {
 					PieceLength: 262144,
 					Length:      351272960,
 					Name:        "test.iso",
+					Files:       []bencodeFile{},
 				},
 			},
 			output: &MetaInfo{
@@ -81,6 +85,32 @@ func TestToMetaInfo(t *testing.T) {
 				PieceLength: 262144,
 				Length:      351272960,
 				Name:        "test.iso",
+				Files:       []storage.File{{Path: "test.iso", Length: 351272960}},
+			},
+			fails: false,
+		},
+		"correct input: multi-file": {
+			input: &bencodeTorrent{
+				Announce: "http://test.tracker.org:6969/announce",
+				Info: bencodeInfo{
+					Pieces:      "T0e1S2t3P4i5E6c7E8s9T0e1S2t3P4i5E6c7E8s9",
+					PieceLength: 262144,
+					Length:      351272960,
+					Name:        "MultiFileDownload",
+					Files:       []bencodeFile{{Path: "notes.txt", Length: 2000}, {Path: "passwords.txt", Length: 1300}},
+				},
+			},
+			output: &MetaInfo{
+				Announce: []string{"http://test.tracker.org:6969/announce"},
+				InfoHash: [20]byte{138, 97, 219, 76, 83, 94, 69, 80, 86, 140, 219, 85, 115, 33, 199, 200, 134, 65, 13, 170},
+				PieceHashes: [][20]byte{
+					{84, 48, 101, 49, 83, 50, 116, 51, 80, 52, 105, 53, 69, 54, 99, 55, 69, 56, 115, 57},
+					{84, 48, 101, 49, 83, 50, 116, 51, 80, 52, 105, 53, 69, 54, 99, 55, 69, 56, 115, 57},
+				},
+				PieceLength: 262144,
+				Length:      3300,
+				Name:        "MultiFileDownload",
+				Files:       []storage.File{{Path: "MultiFileDownload", Length: 0}, {Path: "notes.txt", Length: 2000}, {Path: "passwords.txt", Length: 1300}},
 			},
 			fails: false,
 		},
@@ -92,6 +122,7 @@ func TestToMetaInfo(t *testing.T) {
 					PieceLength: 262144,
 					Length:      351272960,
 					Name:        "test.iso",
+					Files:       []bencodeFile{{Path: "test.iso", Length: 351272960}},
 				},
 			},
 			output: nil,
@@ -99,13 +130,13 @@ func TestToMetaInfo(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
+	for name, test := range tests {
 		tf, err := test.input.toMetaInfo()
 		if test.fails {
 			assert.NotNil(t, err)
 		} else {
 			assert.Nil(t, err)
 		}
-		assert.Equal(t, tf, test.output)
+		assert.Equal(t, test.output, tf, "%s failed", name)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/mitander/bitrush/storage"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,6 +18,7 @@ type MetaInfo struct {
 	PieceLength int
 	Length      int
 	Name        string
+	Files       []storage.File
 }
 
 type bencodeTorrent struct {
@@ -25,11 +27,17 @@ type bencodeTorrent struct {
 	Info         bencodeInfo `bencode:"info"`
 }
 
+type bencodeFile struct {
+	Path   string `bencode:"path"`
+	Length int    `bencode:"length"`
+}
+
 type bencodeInfo struct {
-	Name        string `bencode:"name"`
-	Length      int    `bencode:"length"`
-	Pieces      string `bencode:"pieces"`
-	PieceLength int    `bencode:"piece length"`
+	Name        string        `bencode:"name"`
+	Length      int           `bencode:"length"`
+	Pieces      string        `bencode:"pieces"`
+	PieceLength int           `bencode:"piece length"`
+	Files       []bencodeFile `bencode:"files,omitempty"`
 }
 
 func NewMetaInfo(path string) (*MetaInfo, error) {
@@ -63,13 +71,28 @@ func (bt *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
 		announce = append(bt.AnnounceList, bt.Announce)
 	}
 
+	var length int
+	var files []storage.File
+	if len(bt.Info.Files) != 0 {
+		files = append(files, storage.File{Path: bt.Info.Name, Length: 0})
+		for _, f := range bt.Info.Files {
+			files = append(files, storage.File{Path: f.Path, Length: f.Length})
+			length += f.Length
+		}
+		log.Errorf("%v", infoHash)
+	} else {
+		files = append(files, storage.File{Path: bt.Info.Name, Length: bt.Info.Length})
+		length = bt.Info.Length
+	}
+
 	m := &MetaInfo{
 		Announce:    announce,
 		InfoHash:    infoHash,
 		PieceHashes: pieceHashes,
 		PieceLength: bt.Info.PieceLength,
-		Length:      bt.Info.Length,
+		Length:      length,
 		Name:        bt.Info.Name,
+		Files:       files,
 	}
 	log.Debugf("created torrent meta info: %s", bt.Info.Name)
 

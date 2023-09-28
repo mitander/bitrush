@@ -22,7 +22,6 @@ func main() {
 	flag.Parse()
 
 	log.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
-
 	if *debug {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -32,29 +31,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *read != "" {
-		m, err := metainfo.NewMetaInfo(*read)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		t, err := torrent.NewTorrent(m)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = t.Download(*write)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Info("Download finished!")
-		log.Info("Exiting..")
-		os.Exit(1)
-	} else {
+	if *read == "" {
 		printNoArgs()
 		os.Exit(1)
 	}
+
+	m, err := metainfo.NewMetaInfo(*read)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t, err := torrent.NewTorrent(m)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = t.Download(*write)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info("Download finished!")
+	log.Info("Exiting..")
+	os.Exit(1)
 }
 
 func printHelpMenu() {

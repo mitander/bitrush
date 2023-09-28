@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"runtime"
 
 	"github.com/mitander/bitrush/metainfo"
@@ -63,6 +62,7 @@ type Torrent struct {
 	PieceLength int
 	Length      int
 	Name        string
+	Files       []storage.File
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
@@ -92,6 +92,7 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 		PieceLength: m.PieceLength,
 		Length:      m.Length,
 		Name:        m.Name,
+		Files:       m.Files,
 	}, nil
 }
 
@@ -100,8 +101,7 @@ func (t *Torrent) Download(path string) error {
 	queue := make(chan *pieceWork, len(hashes))
 	results := make(chan *pieceResult)
 
-	path = filepath.Join(path, t.Name)
-	sw, err := storage.NewStorageWorker(path)
+	sw, err := storage.NewStorageWorker(path, t.Files)
 	if err != nil {
 		return err
 	}
