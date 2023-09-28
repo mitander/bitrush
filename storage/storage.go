@@ -29,13 +29,13 @@ func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
 		if !os.IsExist(err) {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 	if len(files) > 1 {
 		// root folder
 		dir = filepath.Join(dir, files[0].Path)
-		err := os.Mkdir(filepath.Join(dir, files[0].Path), 0755)
+		err := os.Mkdir(dir, 0755)
 		if err != nil {
 			return nil, err
 		}
@@ -43,6 +43,9 @@ func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
 	var fileLengths []int
 	var osFiles []*os.File
 	for _, f := range files {
+		if f.Length == 0 {
+			continue
+		}
 		path := filepath.Join(dir, f.Path)
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0755)
 		if err != nil {
@@ -65,13 +68,14 @@ func (s *StorageWorker) StartWorker() {
 	for {
 		select {
 		case w := <-s.Queue:
-			index, file, err := s.GetFile(int(w.Index))
+			index, fileIndex, err := s.GetFile(int(w.Index))
 			if err != nil {
 				log.WithFields(log.Fields{
 					"reason": err.Error(),
 				}).Error("failed to get file, putting work back in queue")
 				s.Queue <- w
 			}
+			file := s.files[fileIndex]
 			_, err = file.Seek((int64(index)), 0)
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -101,20 +105,18 @@ func (s *StorageWorker) StartWorker() {
 	}
 }
 
-// TODO: This needs testing
-func (s *StorageWorker) GetFile(index int) (int, *os.File, error) {
+func (s *StorageWorker) GetFile(index int) (int, int, error) {
 	if len(s.files) == 1 {
-		return index, s.files[0], nil
-	} else {
-		var totalLen int
-		for i, l := range s.fileLengths {
-			totalLen += l / 20
-			if index <= totalLen {
-				fileStart := totalLen - l
-				newIndex := index - fileStart
-				return newIndex, s.files[i], nil
-			}
-		}
-		return 0, nil, errors.New("file could not be found")
+		return index, 0, nil
 	}
+	var offset int
+	for i, l := range s.fileLengths {
+		offset += l
+		if index >= offset {
+			continue
+		}
+		idx := index - (offset - l)
+		return idx, i, nil
+	}
+	return 0, 0, errors.New("index not in range")
 }

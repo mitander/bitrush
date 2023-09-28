@@ -80,7 +80,6 @@ func (bt *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
 			files = append(files, storage.File{Path: f.Path, Length: f.Length})
 			length += f.Length
 		}
-		log.Errorf("%v", infoHash)
 	} else {
 		files = append(files, storage.File{Path: bt.Info.Name, Length: bt.Info.Length})
 		length = bt.Info.Length
