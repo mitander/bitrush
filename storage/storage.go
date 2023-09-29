@@ -72,24 +72,13 @@ func (s *StorageWorker) StartWorker() {
 			index, fileIndex, err := s.GetFile(w.Index)
 			if err != nil {
 				log.Errorf("putting piece %d back in queue: could not get file", w.Index)
-				continue
 			}
 
-			end := index + len(w.Data)
-			fileLen := s.fileLengths[fileIndex]
-			if end > fileLen {
-				// piece data overlaps file boundries,
+			split := s.SplitFileBounds(w, index, fileIndex)
+			if split != nil {
+				// piece data overlap file bounds,
 				// split rest data to new storage work
-				split := fileLen - index
-				w.Data = w.Data[:split]
-				s.Queue <- StorageWork{Index: w.Index + split, Data: w.Data[split:]}
-				log.WithFields(log.Fields{
-					"end":      end,
-					"fileLen":  fileLen,
-					"split":    split,
-					"index":    w.Index,
-					"newIndex": w.Index + split,
-				}).Debug("split storage work")
+				s.Queue <- *split
 			}
 
 			file := s.files[fileIndex]
@@ -151,4 +140,23 @@ func (s *StorageWorker) Write(w io.WriteSeeker, sw StorageWork) (int, error) {
 		return 0, err
 	}
 	return l, nil
+}
+
+func (s *StorageWorker) SplitFileBounds(w StorageWork, index int, fileIndex int) *StorageWork {
+	end := index + len(w.Data)
+	fileLen := s.fileLengths[fileIndex]
+	if end > fileLen {
+		split := fileLen - index
+		restData := w.Data[split:]
+		w.Data = w.Data[:split]
+		log.WithFields(log.Fields{
+			"end":      end,
+			"fileLen":  fileLen,
+			"split":    split,
+			"index":    w.Index,
+			"newIndex": w.Index + split,
+		}).Debug("split storage work")
+		return &StorageWork{Index: w.Index + split, Data: restData}
+	}
+	return nil
 }
