@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,7 @@ type File struct {
 
 type StorageWork struct {
 	Data  []byte
-	Index int64
+	Index int
 }
 
 type StorageWorker struct {
@@ -68,31 +69,41 @@ func (s *StorageWorker) StartWorker() {
 	for {
 		select {
 		case w := <-s.Queue:
-			index, fileIndex, err := s.GetFile(int(w.Index))
+			index, fileIndex, err := s.GetFile(w.Index)
 			if err != nil {
-				log.WithFields(log.Fields{
-					"reason": err.Error(),
-				}).Error("failed to get file, putting work back in queue")
-				s.Queue <- w
-			}
-			file := s.files[fileIndex]
-			_, err = file.Seek((int64(index)), 0)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"reason": err.Error(),
-				}).Error("failed to seek file, putting work back in queue")
-				s.Queue <- w
-			}
-			l, err := file.Write(w.Data)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"reason": err.Error(),
-				}).Error("failed writing to file")
-				s.Queue <- w
+				log.Errorf("putting piece %d back in queue: could not get file", w.Index)
+				continue
 			}
 
-			log.Debugf("wrote %d bytes to index %d", l, w.Index)
-			continue
+			end := index + len(w.Data)
+			fileLen := s.fileLengths[fileIndex]
+			if end > fileLen {
+				// piece data overlaps file boundries,
+				// split rest data to new storage work
+				split := fileLen - index
+				w.Data = w.Data[:split]
+				s.Queue <- StorageWork{Index: w.Index + split, Data: w.Data[split:]}
+				log.WithFields(log.Fields{
+					"end":      end,
+					"fileLen":  fileLen,
+					"split":    split,
+					"index":    w.Index,
+					"newIndex": w.Index + split,
+				}).Debug("split storage work")
+			}
+
+			file := s.files[fileIndex]
+			l, err := s.Write(file, w)
+			if err != nil {
+				log.Errorf("putting piece %d back in queue: could not store work", w.Index)
+				s.Queue <- w
+				continue
+			}
+			log.WithFields(log.Fields{
+				"file":   fileIndex,
+				"index":  index,
+				"length": l,
+			}).Debug("wrote to file")
 		case <-s.Exit:
 			log.Debug("received exit signal, exiting storage worker")
 			close(s.Queue)
@@ -119,4 +130,25 @@ func (s *StorageWorker) GetFile(index int) (int, int, error) {
 		return idx, i, nil
 	}
 	return 0, 0, errors.New("index not in range")
+}
+
+func (s *StorageWorker) Write(w io.WriteSeeker, sw StorageWork) (int, error) {
+	_, err := w.Seek((int64(sw.Index)), 0)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"work":   sw,
+			"reason": err.Error(),
+		}).Error("failed to seek file")
+		return 0, err
+	}
+
+	l, err := w.Write(sw.Data)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"work":   sw,
+			"reason": err.Error(),
+		}).Error("failed writing to file")
+		return 0, err
+	}
+	return l, nil
 }

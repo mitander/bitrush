@@ -130,7 +130,7 @@ func (t *Torrent) Download(path string) error {
 		res := <-results
 		begin, _ := t.pieceBounds(res.index)
 
-		sw.Queue <- storage.StorageWork{Data: res.buf, Index: int64(begin)}
+		sw.Queue <- storage.StorageWork{Data: res.buf, Index: begin}
 		donePieces++
 
 		if render {
