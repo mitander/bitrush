@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/mitander/bitrush/metainfo"
 	"github.com/mitander/bitrush/p2p"
@@ -54,15 +55,16 @@ func (p *pieceWork) validate(buf []byte) error {
 }
 
 type Torrent struct {
-	Trackers    []tracker.Tracker
-	Peers       []p2p.Peer
-	PeerID      [20]byte
-	InfoHash    [20]byte
-	PieceHashes [][20]byte
-	PieceLength int
-	Length      int
-	Name        string
-	Files       []storage.File
+	Trackers        []tracker.Tracker
+	Peers           []p2p.Peer
+	PeerID          [20]byte
+	InfoHash        [20]byte
+	PieceHashes     [][20]byte
+	PieceLength     int
+	Length          int
+	Name            string
+	Files           []storage.File
+	LastPeerRequest time.Time
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
@@ -71,20 +73,18 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 		return nil, err
 	}
 
+	var trackers []tracker.Tracker
 	var peers []p2p.Peer
 	for i := range m.Announce {
 		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, peerID)
 		if err != nil {
 			return nil, err
 		}
-		p, err := tr.ReqPeers()
-		peers = append(peers, p...)
-		if err != nil {
-			return nil, err
-		}
+		trackers = append(trackers, tr)
 	}
 
-	return &Torrent{
+	t := &Torrent{
+		Trackers:    trackers,
 		Peers:       peers,
 		PeerID:      peerID,
 		InfoHash:    m.InfoHash,
@@ -93,13 +93,24 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 		Length:      m.Length,
 		Name:        m.Name,
 		Files:       m.Files,
-	}, nil
+	}
+
+	go t.RequestPeers()
+
+	return t, nil
 }
 
 func (t *Torrent) Download(path string) error {
 	hashes := t.PieceHashes
 	queue := make(chan *pieceWork, len(hashes))
 	results := make(chan *pieceResult)
+
+	var bar *progressbar.ProgressBar
+	render := log.GetLevel() != log.DebugLevel
+
+	if render {
+		bar = progressbar.Default(100, "Downloading with 0 workers")
+	}
 
 	sw, err := storage.NewStorageWorker(path, t.Files)
 	if err != nil {
@@ -114,16 +125,16 @@ func (t *Torrent) Download(path string) error {
 	}
 
 	log.Info("Download started")
-	for _, peer := range t.Peers {
-		go t.startWorker(peer, queue, results)
-	}
-
-	var bar *progressbar.ProgressBar
-	render := log.GetLevel() != log.DebugLevel
-
-	if render {
-		bar = progressbar.Default(100, "Downloading with 0 workers")
-	}
+	go func() {
+		for {
+			time.Sleep(2 * time.Second) // TODO: fix this
+			for _, peer := range t.Peers {
+				if !peer.Active {
+					go t.startWorker(peer, queue, results)
+				}
+			}
+		}
+	}()
 
 	donePieces := 0
 	for donePieces < len(hashes) {
@@ -154,10 +165,19 @@ func (t *Torrent) startWorker(peer p2p.Peer, queue chan *pieceWork, results chan
 	c.SendUnchoke()
 	c.SendInterested()
 
+	peer.Active = true
+	failures := 0
+
 	for pw := range queue {
+		if failures > 3 {
+			peer.Active = false
+			log.Debugf("peer reached max failures, disconnecting client")
+			return
+		}
 		if !c.Bitfield.HasPiece(pw.index) {
 			queue <- pw
 			log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
+			failures += 1
 			continue
 		}
 
@@ -165,6 +185,7 @@ func (t *Torrent) startWorker(peer p2p.Peer, queue chan *pieceWork, results chan
 		if err != nil {
 			queue <- pw
 			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
+			failures += 1
 			continue
 		}
 
@@ -172,6 +193,7 @@ func (t *Torrent) startWorker(peer p2p.Peer, queue chan *pieceWork, results chan
 		if err != nil {
 			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
 			queue <- pw
+			failures += 1
 			continue
 		}
 
@@ -187,4 +209,36 @@ func (t *Torrent) pieceBounds(index int) (begin int, end int) {
 		end = t.Length
 	}
 	return begin, end
+}
+
+func (t *Torrent) RequestPeers() {
+	for {
+		for _, tr := range t.Trackers {
+			peers, err := tr.RequestPeers()
+			if err != nil {
+				continue
+			}
+			t.AppendUnique(peers)
+		}
+		time.Sleep(20 * time.Second)
+		t.LastPeerRequest = time.Now()
+	}
+}
+
+func (t *Torrent) AppendUnique(p []p2p.Peer) {
+	var peers []p2p.Peer
+	for _, np := range p {
+		exist := false
+		for _, kp := range t.Peers {
+			if kp.String() == np.String() {
+				exist = true
+				continue
+			}
+		}
+		if !exist {
+			peers = append(peers, np)
+		}
+	}
+	t.Peers = append(t.Peers, peers...)
+	log.Debugf("added %d peers, total peers: %d", len(peers), len(t.Peers))
 }

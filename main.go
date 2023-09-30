@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mitander/bitrush/metainfo"
 	"github.com/mitander/bitrush/torrent"
@@ -12,7 +13,7 @@ import (
 )
 
 var (
-	read  = flag.String("f", "", "open .torrent file")
+	read  = flag.String("f", "./metainfo/testdata/debian-10.9.0-amd64-netinst.iso.torrent", "open .torrent file")
 	write = flag.String("o", "out", "download directory")
 	help  = flag.Bool("h", false, "show help")
 	debug = flag.Bool("d", false, "enable debug mode")
@@ -31,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *read == "" {
+	if !strings.Contains(*read, ".torrent") {
 		printNoArgs()
 		os.Exit(1)
 	}

@@ -10,8 +10,9 @@ import (
 )
 
 type Peer struct {
-	IP   net.IP
-	Port uint16
+	IP     net.IP
+	Port   uint16
+	Active bool
 }
 
 func (p Peer) String() string {

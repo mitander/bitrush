@@ -18,9 +18,10 @@ type Tracker struct {
 	Query    string
 	PeerId   [20]byte
 	InfoHash [20]byte
+	Peers    []p2p.Peer
 }
 
-func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte) (Tracker, error) {
+func NewTracker(announce string, length int, infoHash [20]byte, peerID [20]byte) (Tracker, error) {
 	u, err := url.Parse(announce)
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to create tracker")
@@ -29,7 +30,7 @@ func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte)
 
 	p := url.Values{
 		"info_hash":  []string{string(infoHash[:])},
-		"peer_id":    []string{string(peerId[:])},
+		"peer_id":    []string{string(peerID[:])},
 		"port":       []string{strconv.Itoa(int(TrackerPort))},
 		"uploaded":   []string{"0"},
 		"downloaded": []string{"0"},
@@ -41,7 +42,7 @@ func NewTracker(announce string, length int, infoHash [20]byte, peerId [20]byte)
 	return Tracker{
 		Announce: announce,
 		Query:    u.String(),
-		PeerId:   peerId,
+		PeerId:   peerID,
 		InfoHash: infoHash,
 	}, nil
 }
@@ -51,7 +52,7 @@ type bencodeResponse struct {
 	Peers    string `bencode:"peers"`
 }
 
-func (t *Tracker) ReqPeers() ([]p2p.Peer, error) {
+func (t *Tracker) RequestPeers() ([]p2p.Peer, error) {
 	c := &http.Client{Timeout: 15 * time.Second}
 	res, err := c.Get(t.Query)
 	if err != nil {

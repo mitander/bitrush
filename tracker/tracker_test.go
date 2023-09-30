@@ -45,7 +45,7 @@ func TestRequestPeers(t *testing.T) {
 	}
 	tr, err := NewTracker(announce, length, infoHash, peerID)
 	assert.Nil(t, err)
-	p, err := tr.ReqPeers()
+	p, err := tr.RequestPeers()
 	assert.Nil(t, err)
 	assert.Equal(t, expected, p)
 }
