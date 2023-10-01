@@ -18,16 +18,16 @@ import (
 )
 
 // http://www.bittorrent.org/beps/bep_0020.html
-var peerIDPrefix = []byte("-BR0001-")
+var prefix = []byte("-BR0001-")
 
 type PeerID [20]byte
 
 func NewPeerID() (PeerID, error) {
 	var id PeerID
-	copy(id[:], peerIDPrefix)
-	_, err := rand.Read(id[len(peerIDPrefix):])
+	copy(id[:8], prefix)
+	_, err := rand.Read(id[12:])
 	if err != nil {
-		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to generate peer id")
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to randomize peer id")
 		return PeerID{}, err
 	}
 	return id, nil
@@ -68,7 +68,7 @@ type Torrent struct {
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
-	peerID, err := NewPeerID()
+	id, err := NewPeerID()
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 	var trackers []tracker.Tracker
 	var peers []p2p.Peer
 	for i := range m.Announce {
-		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, peerID)
+		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, id)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 	t := &Torrent{
 		Trackers:    trackers,
 		Peers:       peers,
-		PeerID:      peerID,
+		PeerID:      id,
 		InfoHash:    m.InfoHash,
 		PieceHashes: m.PieceHashes,
 		PieceLength: m.PieceLength,
