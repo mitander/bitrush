@@ -33,6 +33,7 @@ func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
 			return nil, err
 		}
 	}
+
 	if len(files) > 1 {
 		// root folder
 		dir = filepath.Join(dir, files[0].Path)
@@ -41,6 +42,7 @@ func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
 			return nil, err
 		}
 	}
+
 	var fileLengths []int
 	var osFiles []*os.File
 	for _, f := range files {
@@ -88,6 +90,7 @@ func (s *StorageWorker) StartWorker() {
 				s.Queue <- w
 				continue
 			}
+
 			log.WithFields(log.Fields{
 				"file":   fileIndex,
 				"index":  index,
