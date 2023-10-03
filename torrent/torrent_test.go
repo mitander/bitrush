@@ -106,3 +106,40 @@ func TestPieceBounds(t *testing.T) {
 		assert.Equal(t, test.end, end, name)
 	}
 }
+
+func TestGetActivePeerCount(t *testing.T) {
+	tests := map[string]struct {
+		peers  []p2p.Peer
+		active int
+	}{
+		"test 1": {
+			peers: []p2p.Peer{
+				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: true},
+				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: false},
+				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
+			},
+			active: 1,
+		},
+		"test 2": {
+			peers: []p2p.Peer{
+				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: true},
+				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: true},
+				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
+			},
+			active: 2,
+		},
+		"test 3": {
+			peers: []p2p.Peer{
+				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: false},
+				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: false},
+				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
+			},
+			active: 0,
+		},
+	}
+	for name, test := range tests {
+		torrent := &Torrent{Peers: test.peers}
+		count := torrent.GetActivePeerCount()
+		assert.Equal(t, test.active, count, name)
+	}
+}

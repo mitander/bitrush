@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"runtime"
 	"time"
 
 	"github.com/mitander/bitrush/metainfo"
@@ -148,8 +147,9 @@ func (t *Torrent) Download(path string) error {
 		sw.Queue <- storage.StorageWork{Data: res.buf, Index: begin}
 		donePieces++
 
+		workers := t.GetActivePeerCount()
 		if render {
-			bar.Describe(fmt.Sprintf("Downloading with %d workers", runtime.NumGoroutine()-2))
+			bar.Describe(fmt.Sprintf("Downloading with %d workers", workers))
 			bar.Set(int(float64(donePieces) / float64(len(t.PieceHashes)) * 100))
 		}
 	}
@@ -240,4 +240,15 @@ func (t *Torrent) AppendUnique(p []p2p.Peer) {
 	}
 	t.Peers = append(t.Peers, peers...)
 	log.Debugf("added %d peers, total peers: %d", len(peers), len(t.Peers))
+}
+
+func (t *Torrent) GetActivePeerCount() int {
+	peers := t.Peers
+	count := 0
+	for _, p := range peers {
+		if p.Active {
+			count += 1
+		}
+	}
+	return count
 }
