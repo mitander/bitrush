@@ -123,14 +123,17 @@ func (t *Torrent) Download(path string) error {
 	}
 
 	log.Info("Download started")
+
 	go func() {
 		for {
 			// request new peers from trackers every 20 seconds
 			if time.Since(t.LastPeerRequest) > 20*time.Second {
 				t.RequestPeers()
 			}
-			for _, peer := range t.Peers {
+			for i := range t.Peers {
+				peer := &t.Peers[i]
 				if !peer.Active {
+					peer.Active = true
 					go t.startWorker(peer, queue, results)
 				}
 			}
@@ -156,8 +159,8 @@ func (t *Torrent) Download(path string) error {
 	return nil
 }
 
-func (t *Torrent) startWorker(peer p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
-	c, err := p2p.NewClient(peer, t.PeerID, t.InfoHash)
+func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
+	c, err := p2p.NewClient(*peer, t.PeerID, t.InfoHash)
 	if err != nil {
 		return
 	}
@@ -166,9 +169,7 @@ func (t *Torrent) startWorker(peer p2p.Peer, queue chan *pieceWork, results chan
 	c.SendUnchoke()
 	c.SendInterested()
 
-	peer.Active = true
 	failures := 0
-
 	for pw := range queue {
 		if failures > 3 {
 			peer.Active = false
