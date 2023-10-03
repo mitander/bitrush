@@ -17,15 +17,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// http://www.bittorrent.org/beps/bep_0020.html
-var prefix = []byte("-BR0001-")
-
 type PeerID [20]byte
 
 func NewPeerID() (PeerID, error) {
+	const prefix = "-BR0001-"
 	var id PeerID
 	copy(id[:8], prefix)
-	_, err := rand.Read(id[12:])
+	_, err := rand.Read(id[8:])
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to randomize peer id")
 		return PeerID{}, err
