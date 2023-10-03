@@ -125,7 +125,10 @@ func (t *Torrent) Download(path string) error {
 	log.Info("Download started")
 	go func() {
 		for {
-			time.Sleep(2 * time.Second) // TODO: fix this
+			// request new peers from trackers every 20 seconds
+			if time.Since(t.LastPeerRequest) > 20*time.Second {
+				t.RequestPeers()
+			}
 			for _, peer := range t.Peers {
 				if !peer.Active {
 					go t.startWorker(peer, queue, results)
@@ -210,17 +213,14 @@ func (t *Torrent) pieceBounds(index int) (begin int, end int) {
 }
 
 func (t *Torrent) RequestPeers() {
-	for {
-		for _, tr := range t.Trackers {
-			peers, err := tr.RequestPeers()
-			if err != nil {
-				continue
-			}
-			t.AppendUnique(peers)
+	for _, tr := range t.Trackers {
+		peers, err := tr.RequestPeers()
+		if err != nil {
+			continue
 		}
-		time.Sleep(20 * time.Second)
-		t.LastPeerRequest = time.Now()
+		t.AppendUnique(peers)
 	}
+	t.LastPeerRequest = time.Now()
 }
 
 func (t *Torrent) AppendUnique(p []p2p.Peer) {
