@@ -28,8 +28,8 @@ type bencodeTorrent struct {
 }
 
 type bencodeFile struct {
-	Path   string `bencode:"path"`
-	Length int    `bencode:"length"`
+	Path   []string `bencode:"path"`
+	Length int      `bencode:"length"`
 }
 
 type bencodeInfo struct {
@@ -77,7 +77,7 @@ func (bt *bencodeTorrent) toMetaInfo() (*MetaInfo, error) {
 		// root folder
 		files = append(files, storage.File{Path: bt.Info.Name, Length: 0})
 		for _, f := range bt.Info.Files {
-			files = append(files, storage.File{Path: f.Path, Length: f.Length})
+			files = append(files, storage.File{Path: f.Path[0], Length: f.Length})
 			length += f.Length
 		}
 	} else {

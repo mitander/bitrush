@@ -40,7 +40,9 @@ func NewStorageWorker(ctx context.Context, dir string, files []File) (*StorageWo
 		dir = filepath.Join(dir, files[0].Path)
 		err := os.Mkdir(dir, 0755)
 		if err != nil {
-			return nil, err
+			if !os.IsExist(err) {
+				return nil, err
+			}
 		}
 	}
 
@@ -53,7 +55,7 @@ func NewStorageWorker(ctx context.Context, dir string, files []File) (*StorageWo
 		path := filepath.Join(dir, f.Path)
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0755)
 		if err != nil {
-			log.WithFields(log.Fields{"reason": err.Error(), "path": f.Path}).Error("failed to open file")
+			log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to open filex")
 			return nil, err
 		}
 		osFiles = append(osFiles, file)
