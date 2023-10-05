@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -23,10 +24,10 @@ type StorageWorker struct {
 	files       []*os.File
 	fileLengths []int
 	Queue       chan (StorageWork)
-	Exit        chan (int)
+	ctx         context.Context
 }
 
-func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
+func NewStorageWorker(ctx context.Context, dir string, files []File) (*StorageWorker, error) {
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
 		if !os.IsExist(err) {
@@ -63,7 +64,7 @@ func NewStorageWorker(dir string, files []File) (*StorageWorker, error) {
 		files:       osFiles,
 		fileLengths: fileLengths,
 		Queue:       make(chan (StorageWork)),
-		Exit:        make(chan (int)),
+		ctx:         ctx,
 	}, nil
 }
 
@@ -98,10 +99,9 @@ func (s *StorageWorker) StartWorker() {
 				"index":  index,
 				"length": l,
 			}).Debug("wrote to file")
-		case <-s.Exit:
+		case <-s.ctx.Done():
 			log.Debug("received exit signal, exiting storage worker")
 			close(s.Queue)
-			close(s.Exit)
 			for _, f := range s.files {
 				f.Close()
 			}

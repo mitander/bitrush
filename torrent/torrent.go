@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"errors"
@@ -92,8 +93,6 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 		Files:       m.Files,
 	}
 
-	go t.RequestPeers()
-
 	return t, nil
 }
 
@@ -101,6 +100,8 @@ func (t *Torrent) Download(path string) error {
 	hashes := t.PieceHashes
 	queue := make(chan *pieceWork, len(hashes))
 	results := make(chan *pieceResult)
+	defer close(queue)
+	defer close(results)
 
 	var bar *progressbar.ProgressBar
 	render := log.GetLevel() != log.DebugLevel
@@ -109,7 +110,10 @@ func (t *Torrent) Download(path string) error {
 		bar = progressbar.Default(100, "Downloading with 0 workers")
 	}
 
-	sw, err := storage.NewStorageWorker(path, t.Files)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sw, err := storage.NewStorageWorker(ctx, path, t.Files)
 	if err != nil {
 		return err
 	}
@@ -125,16 +129,19 @@ func (t *Torrent) Download(path string) error {
 
 	go func() {
 		for {
+			select {
 			// request new peers from trackers every 20 seconds
-			if time.Since(t.LastPeerRequest) > 20*time.Second {
+			case <-time.After(time.Until(t.LastPeerRequest.Add(20 * time.Second))):
 				t.RequestPeers()
-			}
-			for i := range t.Peers {
-				peer := &t.Peers[i]
-				if !peer.Active {
-					peer.Active = true
-					go t.startWorker(peer, queue, results)
+				for i := range t.Peers {
+					peer := &t.Peers[i]
+					if !peer.Active {
+						peer.Active = true
+						go t.startWorker(peer, queue, results)
+					}
 				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -153,9 +160,7 @@ func (t *Torrent) Download(path string) error {
 			bar.Set(int(float64(donePieces) / float64(len(t.PieceHashes)) * 100))
 		}
 	}
-	sw.Exit <- 0
-	close(queue)
-	close(results)
+
 	return nil
 }
 
