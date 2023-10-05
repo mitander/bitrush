@@ -6,14 +6,12 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/mitander/bitrush/metainfo"
 	"github.com/mitander/bitrush/p2p"
 	"github.com/mitander/bitrush/storage"
 	"github.com/mitander/bitrush/tracker"
-	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -63,6 +61,8 @@ type Torrent struct {
 	Name            string
 	Files           []storage.File
 	LastPeerRequest time.Time
+	Progress        float64
+	Downloaded      int
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
@@ -103,13 +103,6 @@ func (t *Torrent) Download(path string) error {
 	defer close(queue)
 	defer close(results)
 
-	var bar *progressbar.ProgressBar
-	render := log.GetLevel() != log.DebugLevel
-
-	if render {
-		bar = progressbar.Default(100, "Downloading with 0 workers")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -146,19 +139,16 @@ func (t *Torrent) Download(path string) error {
 		}
 	}()
 
-	donePieces := 0
-	for donePieces < len(hashes) {
+	for t.Downloaded < len(hashes) {
 		res := <-results
 		begin, _ := t.pieceBounds(res.index)
 
 		sw.Queue <- storage.StorageWork{Data: res.buf, Index: begin}
-		donePieces++
+		t.Downloaded++
 
-		workers := t.GetActivePeerCount()
-		if render {
-			bar.Describe(fmt.Sprintf("Downloading with %d workers", workers))
-			bar.Set(int(float64(donePieces) / float64(len(t.PieceHashes)) * 100))
-		}
+		peers := t.GetActivePeerCount()
+		t.Progress = float64(t.Downloaded) / float64(len(t.PieceHashes)) * 100
+		log.Debugf("Downloaded: %0.2f%% - Peers: %d", t.Progress, peers)
 	}
 
 	return nil
