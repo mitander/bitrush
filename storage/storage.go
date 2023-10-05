@@ -74,6 +74,8 @@ func (s *StorageWorker) StartWorker() {
 			index, fileIndex, err := s.GetFile(w.Index)
 			if err != nil {
 				log.Errorf("putting piece %d back in queue: could not get file", w.Index)
+				s.Queue <- w
+				continue
 			}
 
 			split := s.SplitFileBounds(w, index, fileIndex)

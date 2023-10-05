@@ -174,6 +174,7 @@ func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results cha
 		if failures > 3 {
 			peer.Active = false
 			log.Debugf("peer reached max failures, disconnecting client")
+			queue <- pw
 			return
 		}
 		if !c.Bitfield.HasPiece(pw.index) {
