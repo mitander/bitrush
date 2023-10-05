@@ -97,12 +97,12 @@ func TestToMetaInfo(t *testing.T) {
 					PieceLength: 262144,
 					Length:      351272960,
 					Name:        "MultiFileDownload",
-					Files:       []bencodeFile{{Path: "notes.txt", Length: 2000}, {Path: "passwords.txt", Length: 1300}},
+					Files:       []bencodeFile{{Path: []string{"notes.txt"}, Length: 2000}, {Path: []string{"passwords.txt"}, Length: 1300}},
 				},
 			},
 			output: &MetaInfo{
 				Announce: []string{"http://test.tracker.org:6969/announce"},
-				InfoHash: [20]byte{138, 97, 219, 76, 83, 94, 69, 80, 86, 140, 219, 85, 115, 33, 199, 200, 134, 65, 13, 170},
+				InfoHash: [20]byte{181, 195, 58, 171, 46, 218, 137, 221, 88, 101, 209, 27, 104, 249, 234, 211, 106, 49, 4, 92},
 				PieceHashes: [][20]byte{
 					{84, 48, 101, 49, 83, 50, 116, 51, 80, 52, 105, 53, 69, 54, 99, 55, 69, 56, 115, 57},
 					{84, 48, 101, 49, 83, 50, 116, 51, 80, 52, 105, 53, 69, 54, 99, 55, 69, 56, 115, 57},
@@ -122,7 +122,7 @@ func TestToMetaInfo(t *testing.T) {
 					PieceLength: 262144,
 					Length:      351272960,
 					Name:        "test.iso",
-					Files:       []bencodeFile{{Path: "test.iso", Length: 351272960}},
+					Files:       []bencodeFile{{Path: []string{"test.iso"}, Length: 351272960}},
 				},
 			},
 			output: nil,
@@ -133,10 +133,10 @@ func TestToMetaInfo(t *testing.T) {
 	for name, test := range tests {
 		tf, err := test.input.toMetaInfo()
 		if test.fails {
-			assert.NotNil(t, err)
+			assert.NotNil(t, err, name)
 		} else {
-			assert.Nil(t, err)
+			assert.Nil(t, err, name)
 		}
-		assert.Equal(t, test.output, tf, "%s failed", name)
+		assert.Equal(t, test.output, tf, name)
 	}
 }

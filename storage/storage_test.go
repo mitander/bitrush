@@ -16,21 +16,21 @@ func TestGetFile(t *testing.T) {
 		fails     bool
 	}{
 		"correct input": {
-			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, Exit: nil},
+			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, ctx: nil},
 			index:     1300,
 			newIndex:  800,
 			fileIndex: 1,
 			fails:     false,
 		},
 		"correct input: on edge": {
-			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, Exit: nil},
+			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, ctx: nil},
 			index:     1500,
 			newIndex:  0,
 			fileIndex: 2,
 			fails:     false,
 		},
 		"index out of range": {
-			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, Exit: nil},
+			worker:    &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, ctx: nil},
 			index:     5000,
 			newIndex:  0,
 			fileIndex: 0,
@@ -61,17 +61,17 @@ func TestSplitFileBounds(t *testing.T) {
 		split  *StorageWork
 	}{
 		"test 1": {
-			worker: &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, Exit: nil},
+			worker: &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, ctx: nil},
 			work:   StorageWork{Data: data, Index: 400},
 			split:  &StorageWork{Data: data[100:], Index: 500},
 		},
 		"test 2": {
-			worker: &StorageWorker{files: nil, fileLengths: []int{200, 350, 400}, Queue: nil, Exit: nil},
+			worker: &StorageWorker{files: nil, fileLengths: []int{200, 350, 400}, Queue: nil, ctx: nil},
 			work:   StorageWork{Data: data, Index: 546},
 			split:  &StorageWork{Data: data[4:], Index: 550},
 		},
 		"test 3": {
-			worker: &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, Exit: nil},
+			worker: &StorageWorker{files: nil, fileLengths: []int{500, 1000, 2000}, Queue: nil, ctx: nil},
 			work:   StorageWork{Data: data, Index: 1300},
 			split:  nil,
 		},
