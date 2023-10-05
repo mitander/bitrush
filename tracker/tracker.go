@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -53,9 +54,19 @@ type bencodeResponse struct {
 }
 
 func (t *Tracker) RequestPeers() ([]p2p.Peer, error) {
-	c := &http.Client{Timeout: 15 * time.Second}
-	res, err := c.Get(t.Query)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.Query, nil)
 	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to create request")
+		return nil, err
+	}
+
+	c := http.Client{}
+	res, err := c.Do(req)
+	if err != nil {
+		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to send request")
 		return nil, err
 	}
 	defer res.Body.Close()
