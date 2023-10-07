@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -165,5 +166,29 @@ func (s *StorageWorker) SplitFileBounds(w StorageWork, index int, fileIndex int)
 		}).Debug("split storage work")
 		return &StorageWork{Index: w.Index + split, Data: restData}
 	}
+	return nil
+}
+
+func (s *StorageWorker) Complete() error {
+	for len(s.Queue) != 0 {
+		time.Sleep(1 * time.Second)
+		log.Debugf("storage work not completed: %d work items left", len(s.Queue))
+	}
+
+	ok := true
+	for i := range s.files {
+		stat, err := s.files[i].Stat()
+		if err != nil {
+			return err
+		}
+		if stat.Size() != int64(s.fileLengths[i]) {
+			ok = false
+		}
+	}
+	if !ok {
+		return errors.New("file lengths not matching")
+	}
+
+	log.Debugf("storage work completed")
 	return nil
 }

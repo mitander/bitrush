@@ -126,15 +126,15 @@ func (t *Torrent) Download(path string) error {
 			// request new peers from trackers every 20 seconds
 			case <-time.After(time.Until(t.LastPeerRequest.Add(20 * time.Second))):
 				t.RequestPeers()
-				for i := range t.Peers {
-					peer := &t.Peers[i]
-					if !peer.Active {
-						peer.Active = true
-						go t.startWorker(peer, queue, results)
-					}
-				}
 			case <-ctx.Done():
 				return
+			}
+			for i := range t.Peers {
+				peer := &t.Peers[i]
+				if !peer.Active {
+					peer.Active = true
+					go t.startWorker(peer, queue, results)
+				}
 			}
 		}
 	}()
@@ -151,10 +151,20 @@ func (t *Torrent) Download(path string) error {
 		log.Debugf("Downloaded: %0.2f%% - Peers: %d", t.Progress, peers)
 	}
 
+	err = sw.Complete()
+	if err != nil {
+		log.Errorf("failed to complete storage work: %s", err.Error())
+		return err
+	}
+
 	return nil
 }
 
 func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
+	defer func() {
+		peer.Active = false
+	}()
+
 	c, err := p2p.NewClient(*peer, t.PeerID, t.InfoHash)
 	if err != nil {
 		return
@@ -165,13 +175,19 @@ func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results cha
 	c.SendInterested()
 
 	failures := 0
-	for pw := range queue {
+
+	for {
+		pw, ok := <-queue
+		if !ok {
+			return
+		}
+
 		if failures > 3 {
-			peer.Active = false
 			log.Debugf("peer reached max failures, disconnecting client")
 			queue <- pw
 			return
 		}
+
 		if !c.Bitfield.HasPiece(pw.index) {
 			queue <- pw
 			log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
