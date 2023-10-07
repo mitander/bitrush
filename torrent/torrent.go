@@ -43,9 +43,7 @@ type pieceWork struct {
 func (p *pieceWork) validate(buf []byte) error {
 	hash := sha1.Sum(buf)
 	if !bytes.Equal(hash[:], p.hash[:]) {
-		err := errors.New("piece work validation failed")
-		log.Error(err.Error())
-		return err
+		return errors.New("piece work validation failed")
 	}
 	return nil
 }
@@ -120,24 +118,8 @@ func (t *Torrent) Download(path string) error {
 
 	log.Info("Download started")
 
-	go func() {
-		for {
-			select {
-			// request new peers from trackers every 20 seconds
-			case <-time.After(time.Until(t.LastPeerRequest.Add(20 * time.Second))):
-				t.RequestPeers()
-			case <-ctx.Done():
-				return
-			}
-			for i := range t.Peers {
-				peer := &t.Peers[i]
-				if !peer.Active {
-					peer.Active = true
-					go t.startWorker(peer, queue, results)
-				}
-			}
-		}
-	}()
+	go t.RequestPeers(ctx)
+	go t.PeerDownload(ctx, queue, results)
 
 	for t.Downloaded < len(hashes) {
 		res := <-results
@@ -160,7 +142,24 @@ func (t *Torrent) Download(path string) error {
 	return nil
 }
 
-func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
+func (t *Torrent) PeerDownload(ctx context.Context, queue chan *pieceWork, results chan *pieceResult) {
+	for {
+		select {
+		case <-time.After(1 * time.Second):
+			for i := range t.Peers {
+				peer := &t.Peers[i]
+				if !peer.Active {
+					peer.Active = true
+					go t.startWorker(ctx, peer, queue, results)
+				}
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (t *Torrent) startWorker(ctx context.Context, peer *p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
 	defer func() {
 		peer.Active = false
 	}()
@@ -177,42 +176,43 @@ func (t *Torrent) startWorker(peer *p2p.Peer, queue chan *pieceWork, results cha
 	failures := 0
 
 	for {
-		pw, ok := <-queue
-		if !ok {
+		select {
+		case pw := <-queue:
+			if failures > 3 {
+				queue <- pw
+				log.Debugf("peer reached max failures, disconnecting client")
+				return
+			}
+
+			if !c.Bitfield.HasPiece(pw.index) {
+				queue <- pw
+				log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
+				failures += 1
+				continue
+			}
+
+			buf, err := c.DownloadPiece(pw.index, pw.length)
+			if err != nil {
+				queue <- pw
+				log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
+				failures += 1
+				continue
+			}
+
+			err = pw.validate(buf)
+			if err != nil {
+				log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
+				queue <- pw
+				failures += 1
+				continue
+			}
+
+			c.SendHave(pw.index)
+			results <- &pieceResult{pw.index, buf}
+
+		case <-ctx.Done():
 			return
 		}
-
-		if failures > 3 {
-			log.Debugf("peer reached max failures, disconnecting client")
-			queue <- pw
-			return
-		}
-
-		if !c.Bitfield.HasPiece(pw.index) {
-			queue <- pw
-			log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
-			failures += 1
-			continue
-		}
-
-		buf, err := c.DownloadPiece(pw.index, pw.length)
-		if err != nil {
-			queue <- pw
-			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
-			failures += 1
-			continue
-		}
-
-		err = pw.validate(buf)
-		if err != nil {
-			log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
-			queue <- pw
-			failures += 1
-			continue
-		}
-
-		c.SendHave(pw.index)
-		results <- &pieceResult{pw.index, buf}
 	}
 }
 
@@ -225,15 +225,24 @@ func (t *Torrent) pieceBounds(index int) (begin int, end int) {
 	return begin, end
 }
 
-func (t *Torrent) RequestPeers() {
-	for _, tr := range t.Trackers {
-		peers, err := tr.RequestPeers()
-		if err != nil {
-			continue
+func (t *Torrent) RequestPeers(ctx context.Context) {
+	for {
+		select {
+		// request new peers from trackers every 20 seconds
+		case <-time.After(time.Until(t.LastPeerRequest.Add(20 * time.Second))):
+			for _, tr := range t.Trackers {
+				peers, err := tr.RequestPeers()
+				if err != nil {
+					continue
+				}
+				t.AppendUnique(peers)
+			}
+			t.LastPeerRequest = time.Now()
+
+		case <-ctx.Done():
+			return
 		}
-		t.AppendUnique(peers)
 	}
-	t.LastPeerRequest = time.Now()
 }
 
 func (t *Torrent) AppendUnique(p []p2p.Peer) {

@@ -102,12 +102,13 @@ func (s *StorageWorker) StartWorker() {
 				"index":  index,
 				"length": l,
 			}).Debug("wrote to file")
+
 		case <-s.ctx.Done():
-			log.Debug("received exit signal, exiting storage worker")
 			close(s.Queue)
 			for _, f := range s.files {
 				f.Close()
 			}
+			log.Debug("received exit signal, exiting storage worker")
 			return
 		}
 	}
