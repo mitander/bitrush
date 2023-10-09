@@ -23,10 +23,7 @@ func TestAppendUnique(t *testing.T) {
 				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 			},
-			expect: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
-			},
+			expect: nil,
 		},
 		"test 2": {
 			exist: []p2p.Peer{
@@ -38,8 +35,6 @@ func TestAppendUnique(t *testing.T) {
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
 			expect: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
 		},
@@ -55,8 +50,6 @@ func TestAppendUnique(t *testing.T) {
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
 			expect: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1338},
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
@@ -64,8 +57,8 @@ func TestAppendUnique(t *testing.T) {
 	}
 	for name, test := range tests {
 		torrent := &Torrent{Peers: test.exist}
-		torrent.AppendUnique(test.new)
-		assert.Equal(t, test.expect, torrent.Peers, name)
+		got := torrent.FilterUnique(test.new)
+		assert.Equal(t, test.expect, got, name)
 	}
 }
 
@@ -104,42 +97,5 @@ func TestPieceBounds(t *testing.T) {
 		begin, end := torrent.pieceBounds(test.index)
 		assert.Equal(t, test.begin, begin, name)
 		assert.Equal(t, test.end, end, name)
-	}
-}
-
-func TestGetActivePeerCount(t *testing.T) {
-	tests := map[string]struct {
-		peers  []p2p.Peer
-		active int
-	}{
-		"test 1": {
-			peers: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: true},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: false},
-				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
-			},
-			active: 1,
-		},
-		"test 2": {
-			peers: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: true},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: true},
-				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
-			},
-			active: 2,
-		},
-		"test 3": {
-			peers: []p2p.Peer{
-				{IP: net.IP{192, 168, 1, 0}, Port: 1337, Active: false},
-				{IP: net.IP{192, 168, 1, 1}, Port: 1337, Active: false},
-				{IP: net.IP{192, 168, 1, 2}, Port: 1337, Active: false},
-			},
-			active: 0,
-		},
-	}
-	for name, test := range tests {
-		torrent := &Torrent{Peers: test.peers}
-		count := torrent.GetActivePeerCount()
-		assert.Equal(t, test.active, count, name)
 	}
 }

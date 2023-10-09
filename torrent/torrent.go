@@ -61,6 +61,10 @@ type Torrent struct {
 	LastPeerRequest time.Time
 	Progress        float64
 	Downloaded      int
+	downloadC       chan *pieceWork
+	resultC         chan *pieceResult
+	workerC         chan p2p.Peer
+	ActiveWorkers   uint
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
@@ -80,27 +84,25 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 	}
 
 	t := &Torrent{
-		Trackers:    trackers,
-		Peers:       peers,
-		PeerID:      id,
-		InfoHash:    m.InfoHash,
-		PieceHashes: m.PieceHashes,
-		PieceLength: m.PieceLength,
-		Length:      m.Length,
-		Name:        m.Name,
-		Files:       m.Files,
+		Trackers:      trackers,
+		Peers:         peers,
+		PeerID:        id,
+		InfoHash:      m.InfoHash,
+		PieceHashes:   m.PieceHashes,
+		PieceLength:   m.PieceLength,
+		Length:        m.Length,
+		Name:          m.Name,
+		Files:         m.Files,
+		downloadC:     make(chan *pieceWork, len(m.PieceHashes)),
+		resultC:       make(chan *pieceResult),
+		workerC:       make(chan p2p.Peer),
+		ActiveWorkers: 0,
 	}
 
 	return t, nil
 }
 
 func (t *Torrent) Download(path string) error {
-	hashes := t.PieceHashes
-	queue := make(chan *pieceWork, len(hashes))
-	results := make(chan *pieceResult)
-	defer close(queue)
-	defer close(results)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -110,27 +112,28 @@ func (t *Torrent) Download(path string) error {
 	}
 	go sw.StartWorker()
 
-	for index, hash := range hashes {
-		begin, end := t.pieceBounds(index)
-		length := end - begin
-		queue <- &pieceWork{index, hash, length}
-	}
+	go func() {
+		for index, hash := range t.PieceHashes {
+			begin, end := t.pieceBounds(index)
+			length := end - begin
+			t.downloadC <- &pieceWork{index, hash, length}
+		}
+	}()
 
 	log.Info("Download started")
 
 	go t.RequestPeers(ctx)
-	go t.PeerDownload(ctx, queue, results)
+	go t.PeerDownload(ctx)
 
-	for t.Downloaded < len(hashes) {
-		res := <-results
+	for t.Downloaded < len(t.PieceHashes) {
+		res := <-t.resultC
 		begin, _ := t.pieceBounds(res.index)
 
 		sw.Queue <- storage.StorageWork{Data: res.buf, Index: begin}
 		t.Downloaded++
 
-		peers := t.GetActivePeerCount()
 		t.Progress = float64(t.Downloaded) / float64(len(t.PieceHashes)) * 100
-		log.Debugf("Downloaded: %0.2f%% - Peers: %d", t.Progress, peers)
+		log.Debugf("Downloaded: %0.2f%% - Peers: %d", t.Progress, t.ActiveWorkers)
 	}
 
 	err = sw.Complete()
@@ -142,75 +145,62 @@ func (t *Torrent) Download(path string) error {
 	return nil
 }
 
-func (t *Torrent) PeerDownload(ctx context.Context, queue chan *pieceWork, results chan *pieceResult) {
+func (t *Torrent) PeerDownload(ctx context.Context) {
 	for {
 		select {
-		case <-time.After(1 * time.Second):
-			for i := range t.Peers {
-				peer := &t.Peers[i]
-				if !peer.Active {
-					peer.Active = true
-					go t.startWorker(ctx, peer, queue, results)
-				}
-			}
+		case p := <-t.workerC:
+			go t.startWorker(ctx, p)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (t *Torrent) startWorker(ctx context.Context, peer *p2p.Peer, queue chan *pieceWork, results chan *pieceResult) {
-	defer func() {
-		peer.Active = false
-	}()
-
-	c, err := p2p.NewClient(*peer, t.PeerID, t.InfoHash)
+func (t *Torrent) startWorker(ctx context.Context, peer p2p.Peer) {
+	cooldown := 5 * time.Second
+	c, err := p2p.NewClient(peer, t.PeerID, t.InfoHash)
 	if err != nil {
+		time.Sleep(cooldown)
+		t.workerC <- peer
 		return
 	}
 	defer c.Conn.Close()
+	t.ActiveWorkers++
 
 	c.SendUnchoke()
 	c.SendInterested()
 
-	failures := 0
-
 	for {
 		select {
-		case pw := <-queue:
-			if failures > 3 {
-				queue <- pw
-				log.Debugf("peer reached max failures, disconnecting client")
-				return
-			}
-
+		case pw := <-t.downloadC:
 			if !c.Bitfield.HasPiece(pw.index) {
-				queue <- pw
+				t.downloadC <- pw
 				log.Debugf("putting piece '%d' back in queue: not in bitfield", pw.index)
-				failures += 1
+				time.Sleep(cooldown)
 				continue
 			}
 
 			buf, err := c.DownloadPiece(pw.index, pw.length)
 			if err != nil {
-				queue <- pw
+				t.downloadC <- pw
 				log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
-				failures += 1
+				time.Sleep(cooldown)
 				continue
 			}
 
 			err = pw.validate(buf)
 			if err != nil {
+				t.downloadC <- pw
 				log.WithFields(log.Fields{"reason": err.Error(), "index": pw.index}).Debug("putting piece back in queue")
-				queue <- pw
-				failures += 1
+				time.Sleep(cooldown)
 				continue
 			}
 
 			c.SendHave(pw.index)
-			results <- &pieceResult{pw.index, buf}
+			t.resultC <- &pieceResult{pw.index, buf}
 
 		case <-ctx.Done():
+			t.ActiveWorkers--
 			return
 		}
 	}
@@ -228,14 +218,20 @@ func (t *Torrent) pieceBounds(index int) (begin int, end int) {
 func (t *Torrent) RequestPeers(ctx context.Context) {
 	for {
 		select {
-		// request new peers from trackers every 20 seconds
-		case <-time.After(time.Until(t.LastPeerRequest.Add(20 * time.Second))):
+		// request new peers from trackers every 5 seconds
+		case <-time.After(time.Until(t.LastPeerRequest.Add(5 * time.Second))):
 			for _, tr := range t.Trackers {
 				peers, err := tr.RequestPeers()
 				if err != nil {
 					continue
 				}
-				t.AppendUnique(peers)
+				peers = t.FilterUnique(peers)
+				t.Peers = append(t.Peers, peers...)
+				log.Debugf("added %d peers, total peers: %d", len(peers), len(t.Peers))
+
+				for _, p := range peers {
+					t.workerC <- p
+				}
 			}
 			t.LastPeerRequest = time.Now()
 
@@ -245,31 +241,19 @@ func (t *Torrent) RequestPeers(ctx context.Context) {
 	}
 }
 
-func (t *Torrent) AppendUnique(p []p2p.Peer) {
+func (t *Torrent) FilterUnique(p []p2p.Peer) []p2p.Peer {
 	var peers []p2p.Peer
 	for _, np := range p {
 		exist := false
 		for _, kp := range t.Peers {
 			if kp.String() == np.String() {
 				exist = true
-				continue
+				break
 			}
 		}
 		if !exist {
 			peers = append(peers, np)
 		}
 	}
-	t.Peers = append(t.Peers, peers...)
-	log.Debugf("added %d peers, total peers: %d", len(peers), len(t.Peers))
-}
-
-func (t *Torrent) GetActivePeerCount() int {
-	peers := t.Peers
-	count := 0
-	for _, p := range peers {
-		if p.Active {
-			count += 1
-		}
-	}
-	return count
+	return peers
 }
