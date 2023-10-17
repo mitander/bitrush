@@ -29,7 +29,7 @@ func NewClient(peer Peer, peerID, infoHash [20]byte) (*Client, error) {
 		return nil, err
 	}
 
-	hs := handshake.New(infoHash, peerID)
+	hs := handshake.NewHandshake(infoHash, peerID)
 	_, err = hs.Send(conn)
 	if err != nil {
 		conn.Close()

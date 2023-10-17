@@ -16,19 +16,19 @@ type File struct {
 	Length int
 }
 
-type StorageWork struct {
+type storageWork struct {
 	Data  []byte
 	Index int
 }
 
-type StorageWorker struct {
+type storageWorker struct {
 	files       []*os.File
 	fileLengths []int
-	Queue       chan (StorageWork)
+	queue       chan (storageWork)
 	ctx         context.Context
 }
 
-func NewStorageWorker(ctx context.Context, dir string, files []File) (*StorageWorker, error) {
+func NewStorageWorker(ctx context.Context, dir string, files []File) (*storageWorker, error) {
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
 		if !os.IsExist(err) {
@@ -63,37 +63,37 @@ func NewStorageWorker(ctx context.Context, dir string, files []File) (*StorageWo
 		fileLengths = append(fileLengths, f.Length)
 	}
 
-	return &StorageWorker{
+	return &storageWorker{
 		files:       osFiles,
 		fileLengths: fileLengths,
-		Queue:       make(chan (StorageWork)),
+		queue:       make(chan (storageWork)),
 		ctx:         ctx,
 	}, nil
 }
 
-func (s *StorageWorker) StartWorker() {
+func (s *storageWorker) StartWorker() {
 	for {
 		select {
-		case w := <-s.Queue:
-			index, fileIndex, err := s.GetFile(w.Index)
+		case w := <-s.queue:
+			index, fileIndex, err := s.getFile(w.Index)
 			if err != nil {
 				log.Errorf("putting piece %d back in queue: could not get file", w.Index)
-				s.Queue <- w
+				s.queue <- w
 				continue
 			}
 
-			split := s.SplitFileBounds(w, index, fileIndex)
+			split := s.splitFileBounds(w, index, fileIndex)
 			if split != nil {
 				// piece data overlap file bounds,
 				// split rest data to new storage work
-				s.Queue <- *split
+				s.queue <- *split
 			}
 
 			file := s.files[fileIndex]
-			l, err := s.Write(file, w)
+			l, err := s.write(file, w)
 			if err != nil {
 				log.Errorf("putting piece %d back in queue: could not store work", w.Index)
-				s.Queue <- w
+				s.queue <- w
 				continue
 			}
 
@@ -104,7 +104,7 @@ func (s *StorageWorker) StartWorker() {
 			}).Debug("wrote to file")
 
 		case <-s.ctx.Done():
-			close(s.Queue)
+			close(s.queue)
 			for _, f := range s.files {
 				f.Close()
 			}
@@ -114,7 +114,7 @@ func (s *StorageWorker) StartWorker() {
 	}
 }
 
-func (s *StorageWorker) GetFile(index int) (int, int, error) {
+func (s *storageWorker) getFile(index int) (int, int, error) {
 	if len(s.files) == 1 {
 		return index, 0, nil
 	}
@@ -130,7 +130,7 @@ func (s *StorageWorker) GetFile(index int) (int, int, error) {
 	return 0, 0, errors.New("index not in range")
 }
 
-func (s *StorageWorker) Write(w io.WriteSeeker, sw StorageWork) (int, error) {
+func (s *storageWorker) write(w io.WriteSeeker, sw storageWork) (int, error) {
 	_, err := w.Seek((int64(sw.Index)), 0)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -151,7 +151,7 @@ func (s *StorageWorker) Write(w io.WriteSeeker, sw StorageWork) (int, error) {
 	return l, nil
 }
 
-func (s *StorageWorker) SplitFileBounds(w StorageWork, index int, fileIndex int) *StorageWork {
+func (s *storageWorker) splitFileBounds(w storageWork, index int, fileIndex int) *storageWork {
 	end := index + len(w.Data)
 	fileLen := s.fileLengths[fileIndex]
 	if end > fileLen {
@@ -165,15 +165,15 @@ func (s *StorageWorker) SplitFileBounds(w StorageWork, index int, fileIndex int)
 			"index":    w.Index,
 			"newIndex": w.Index + split,
 		}).Debug("split storage work")
-		return &StorageWork{Index: w.Index + split, Data: restData}
+		return &storageWork{Index: w.Index + split, Data: restData}
 	}
 	return nil
 }
 
-func (s *StorageWorker) Complete() error {
-	for len(s.Queue) != 0 {
+func (s *storageWorker) Complete() error {
+	for len(s.queue) != 0 {
 		time.Sleep(1 * time.Second)
-		log.Debugf("storage work not completed: %d work items left", len(s.Queue))
+		log.Debugf("storage work not completed: %d work items left", len(s.queue))
 	}
 
 	ok := true
@@ -192,4 +192,8 @@ func (s *StorageWorker) Complete() error {
 
 	log.Debugf("storage work completed")
 	return nil
+}
+
+func (s *storageWorker) AddWork(data []byte, index int) {
+	s.queue <- storageWork{Data: data, Index: index}
 }

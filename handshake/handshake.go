@@ -17,7 +17,7 @@ type Handshake struct {
 	PeerID   [20]byte
 }
 
-func New(infoHash [20]byte, peerID [20]byte) *Handshake {
+func NewHandshake(infoHash [20]byte, peerID [20]byte) *Handshake {
 	return &Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: infoHash,
@@ -29,7 +29,7 @@ func (h *Handshake) Send(conn net.Conn) (*Handshake, error) {
 	conn.SetDeadline(time.Now().Add(3 * time.Second))
 	defer conn.SetDeadline(time.Time{})
 
-	_, err := conn.Write(h.Serialize())
+	_, err := conn.Write(h.serialize())
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to send handshake")
 		return nil, err
@@ -49,7 +49,7 @@ func (h *Handshake) Send(conn net.Conn) (*Handshake, error) {
 }
 
 // handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
-func (h *Handshake) Serialize() []byte {
+func (h *Handshake) serialize() []byte {
 	buf := make([]byte, len(h.Pstr)+49)
 	buf[0] = byte(len(h.Pstr))
 	curr := 1

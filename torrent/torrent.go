@@ -17,16 +17,15 @@ import (
 
 type PeerID [20]byte
 
-func NewPeerID() (PeerID, error) {
-	const prefix = "-BR0001-"
-	var id PeerID
-	copy(id[:8], prefix)
-	_, err := rand.Read(id[8:])
+func newPeerID() (PeerID, error) {
+	var peerID PeerID
+	copy(peerID[:8], "-BR0001-")
+	_, err := rand.Read(peerID[8:])
 	if err != nil {
 		log.WithFields(log.Fields{"reason": err.Error()}).Error("failed to randomize peer id")
 		return PeerID{}, err
 	}
-	return id, nil
+	return peerID, nil
 }
 
 type pieceResult struct {
@@ -68,7 +67,7 @@ type Torrent struct {
 }
 
 func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
-	id, err := NewPeerID()
+	id, err := newPeerID()
 	if err != nil {
 		return nil, err
 	}
@@ -122,16 +121,16 @@ func (t *Torrent) Download(path string) error {
 
 	log.Info("Download started")
 
-	go t.RequestPeers(ctx)
-	go t.PeerDownload(ctx)
+	go t.requestPeers(ctx)
+	go t.peerDownload(ctx)
 
 	for t.Downloaded < len(t.PieceHashes) {
 		res := <-t.resultC
 		begin, _ := t.pieceBounds(res.index)
 
-		sw.Queue <- storage.StorageWork{Data: res.buf, Index: begin}
-		t.Downloaded++
+		sw.AddWork(res.buf, begin)
 
+		t.Downloaded++
 		t.Progress = float64(t.Downloaded) / float64(len(t.PieceHashes)) * 100
 		log.Debugf("Downloaded: %0.2f%% - Peers: %d", t.Progress, t.ActiveWorkers)
 	}
@@ -145,7 +144,7 @@ func (t *Torrent) Download(path string) error {
 	return nil
 }
 
-func (t *Torrent) PeerDownload(ctx context.Context) {
+func (t *Torrent) peerDownload(ctx context.Context) {
 	for {
 		select {
 		case p := <-t.workerC:
@@ -215,7 +214,7 @@ func (t *Torrent) pieceBounds(index int) (begin int, end int) {
 	return begin, end
 }
 
-func (t *Torrent) RequestPeers(ctx context.Context) {
+func (t *Torrent) requestPeers(ctx context.Context) {
 	for {
 		select {
 		// request new peers from trackers every 5 seconds
@@ -225,7 +224,7 @@ func (t *Torrent) RequestPeers(ctx context.Context) {
 				if err != nil {
 					continue
 				}
-				peers = t.FilterUnique(peers)
+				peers = t.filterUnique(peers)
 				t.Peers = append(t.Peers, peers...)
 				log.Debugf("added %d peers, total peers: %d", len(peers), len(t.Peers))
 
@@ -241,7 +240,7 @@ func (t *Torrent) RequestPeers(ctx context.Context) {
 	}
 }
 
-func (t *Torrent) FilterUnique(p []peer.Peer) []peer.Peer {
+func (t *Torrent) filterUnique(p []peer.Peer) []peer.Peer {
 	var peers []peer.Peer
 	for _, np := range p {
 		exist := false

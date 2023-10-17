@@ -57,7 +57,7 @@ func TestAppendUnique(t *testing.T) {
 	}
 	for name, test := range tests {
 		torrent := &Torrent{Peers: test.exist}
-		got := torrent.FilterUnique(test.new)
+		got := torrent.filterUnique(test.new)
 		assert.Equal(t, test.expect, got, name)
 	}
 }
