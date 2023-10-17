@@ -1,4 +1,4 @@
-package p2p
+package peer
 
 import (
 	"encoding/binary"
@@ -6,31 +6,33 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/mitander/bitrush/bitfield"
+	"github.com/mitander/bitrush/message"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewClient(t *testing.T) {
 	tests := map[string]struct {
 		peer   Peer
-		id     messageID
+		id     message.MessageID
 		msgLen int
 		fails  bool
 	}{
 		"correct input": {
 			peer:   Peer{IP: net.IP{127, 0, 0, 1}, Port: 1442},
-			id:     MsgBitfield, // <- when creating client first msg should be bitfield
+			id:     message.MsgBitfield, // <- when creating client first msg should be bitfield
 			msgLen: 3,
 			fails:  false,
 		},
 		"invalid message id": {
 			peer:   Peer{IP: net.IP{127, 0, 0, 1}, Port: 1442},
-			id:     MsgHave, // <- fails here
+			id:     message.MsgHave, // <- fails here
 			msgLen: 3,
 			fails:  true,
 		},
 		"invalid message length": {
 			peer:   Peer{IP: net.IP{127, 0, 0, 1}, Port: 1442},
-			id:     MsgBitfield,
+			id:     message.MsgBitfield,
 			msgLen: 0, // <- fails here, len 0 is keep alive
 			fails:  true,
 		},
@@ -39,7 +41,7 @@ func TestNewClient(t *testing.T) {
 	for name, test := range tests {
 		hash := make([]byte, 20)
 		id := make([]byte, 20)
-		bitfield := Bitfield{0b11111111, 0b11111111}
+		bitfield := bitfield.Bitfield{0b11111111, 0b11111111}
 
 		// sync test with listener
 		var wg sync.WaitGroup
@@ -69,7 +71,7 @@ func TestNewClient(t *testing.T) {
 		pstrlen[0] = byte(2)
 		c.Write(pstrlen)
 		hs := make([]byte, 2+hsLen)
-		hs[1] = byte(MsgBitfield)
+		hs[1] = byte(message.MsgBitfield)
 		c.Write(hs)
 
 		// write message length

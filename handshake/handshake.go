@@ -1,4 +1,4 @@
-package p2p
+package handshake
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ type Handshake struct {
 	PeerID   [20]byte
 }
 
-func NewHandshake(infoHash [20]byte, peerID [20]byte) *Handshake {
+func New(infoHash [20]byte, peerID [20]byte) *Handshake {
 	return &Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: infoHash,

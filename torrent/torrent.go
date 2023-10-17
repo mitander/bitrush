@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/mitander/bitrush/metainfo"
-	"github.com/mitander/bitrush/p2p"
+	"github.com/mitander/bitrush/peer"
 	"github.com/mitander/bitrush/storage"
 	"github.com/mitander/bitrush/tracker"
 	log "github.com/sirupsen/logrus"
@@ -50,7 +50,7 @@ func (p *pieceWork) validate(buf []byte) error {
 
 type Torrent struct {
 	Trackers        []tracker.Tracker
-	Peers           []p2p.Peer
+	Peers           []peer.Peer
 	PeerID          [20]byte
 	InfoHash        [20]byte
 	PieceHashes     [][20]byte
@@ -63,7 +63,7 @@ type Torrent struct {
 	Downloaded      int
 	downloadC       chan *pieceWork
 	resultC         chan *pieceResult
-	workerC         chan p2p.Peer
+	workerC         chan peer.Peer
 	ActiveWorkers   uint
 }
 
@@ -74,7 +74,7 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 	}
 
 	var trackers []tracker.Tracker
-	var peers []p2p.Peer
+	var peers []peer.Peer
 	for i := range m.Announce {
 		tr, err := tracker.NewTracker(m.Announce[i], m.Length, m.InfoHash, id)
 		if err != nil {
@@ -95,7 +95,7 @@ func NewTorrent(m *metainfo.MetaInfo) (*Torrent, error) {
 		Files:         m.Files,
 		downloadC:     make(chan *pieceWork, len(m.PieceHashes)),
 		resultC:       make(chan *pieceResult),
-		workerC:       make(chan p2p.Peer),
+		workerC:       make(chan peer.Peer),
 		ActiveWorkers: 0,
 	}
 
@@ -156,12 +156,12 @@ func (t *Torrent) PeerDownload(ctx context.Context) {
 	}
 }
 
-func (t *Torrent) startWorker(ctx context.Context, peer p2p.Peer) {
+func (t *Torrent) startWorker(ctx context.Context, p peer.Peer) {
 	cooldown := 5 * time.Second
-	c, err := p2p.NewClient(peer, t.PeerID, t.InfoHash)
+	c, err := peer.NewClient(p, t.PeerID, t.InfoHash)
 	if err != nil {
 		time.Sleep(cooldown)
-		t.workerC <- peer
+		t.workerC <- p
 		return
 	}
 	defer c.Conn.Close()
@@ -241,8 +241,8 @@ func (t *Torrent) RequestPeers(ctx context.Context) {
 	}
 }
 
-func (t *Torrent) FilterUnique(p []p2p.Peer) []p2p.Peer {
-	var peers []p2p.Peer
+func (t *Torrent) FilterUnique(p []peer.Peer) []peer.Peer {
+	var peers []peer.Peer
 	for _, np := range p {
 		exist := false
 		for _, kp := range t.Peers {

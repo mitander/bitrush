@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mitander/bitrush/p2p"
+	"github.com/mitander/bitrush/peer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,7 +39,7 @@ func TestRequestPeers(t *testing.T) {
 	length := 351272960
 	peerID := [20]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
 
-	expected := []p2p.Peer{
+	expected := []peer.Peer{
 		{IP: net.IP{192, 0, 2, 210}, Port: 6888},
 		{IP: net.IP{127, 0, 0, 21}, Port: 6889},
 	}

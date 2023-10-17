@@ -1,4 +1,4 @@
-package p2p
+package message
 
 import (
 	"encoding/binary"
@@ -17,25 +17,25 @@ var (
 	InvalidDataLength    error = errors.New("invalid data length")
 )
 
-type messageID uint8
+type MessageID uint8
 
 type Message struct {
-	ID      messageID
+	ID      MessageID
 	Payload []byte
 }
 
 // [https://wiki.theory.org/BitTorrentSpecification#Messages]
 const (
-	MsgChoke         messageID = 0
-	MsgUnchoke       messageID = 1
-	MsgInterested    messageID = 2
-	MsgNotInterested messageID = 3
-	MsgHave          messageID = 4
-	MsgBitfield      messageID = 5
-	MsgRequest       messageID = 6
-	MsgPiece         messageID = 7
-	MsgCancel        messageID = 8
-	MsgKeepAlive     messageID = 9
+	MsgChoke         MessageID = 0
+	MsgUnchoke       MessageID = 1
+	MsgInterested    MessageID = 2
+	MsgNotInterested MessageID = 3
+	MsgHave          MessageID = 4
+	MsgBitfield      MessageID = 5
+	MsgRequest       MessageID = 6
+	MsgPiece         MessageID = 7
+	MsgCancel        MessageID = 8
+	MsgKeepAlive     MessageID = 9
 )
 
 func FormatRequestMsg(index, begin, length int) *Message {
@@ -141,7 +141,7 @@ func ReadMessage(r io.Reader) (*Message, error) {
 	}
 
 	return &Message{
-		ID:      messageID(msgBuf[0]),
+		ID:      MessageID(msgBuf[0]),
 		Payload: msgBuf[1:],
 	}, nil
 }

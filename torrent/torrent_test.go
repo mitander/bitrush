@@ -4,52 +4,52 @@ import (
 	"net"
 	"testing"
 
-	"github.com/mitander/bitrush/p2p"
+	"github.com/mitander/bitrush/peer"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAppendUnique(t *testing.T) {
 	tests := map[string]struct {
-		exist  []p2p.Peer
-		new    []p2p.Peer
-		expect []p2p.Peer
+		exist  []peer.Peer
+		new    []peer.Peer
+		expect []peer.Peer
 	}{
 		"test 1": {
-			exist: []p2p.Peer{
+			exist: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 			},
-			new: []p2p.Peer{
+			new: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 			},
 			expect: nil,
 		},
 		"test 2": {
-			exist: []p2p.Peer{
+			exist: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 			},
-			new: []p2p.Peer{
+			new: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
-			expect: []p2p.Peer{
+			expect: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
 		},
 		"test 3": {
-			exist: []p2p.Peer{
+			exist: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 0}, Port: 1337},
 				{IP: net.IP{192, 168, 1, 1}, Port: 1337},
 			},
-			new: []p2p.Peer{
+			new: []peer.Peer{
 				// allow multiple ports on same ip,
 				// not sure if this is needed
 				{IP: net.IP{192, 168, 1, 1}, Port: 1338},
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
-			expect: []p2p.Peer{
+			expect: []peer.Peer{
 				{IP: net.IP{192, 168, 1, 1}, Port: 1338},
 				{IP: net.IP{192, 168, 1, 2}, Port: 1337},
 			},
