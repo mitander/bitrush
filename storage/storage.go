@@ -53,12 +53,14 @@ func NewStorageWorker(ctx context.Context, dir string, files []File) (*storageWo
 		if f.Length == 0 {
 			continue
 		}
+
 		path := filepath.Join(dir, f.Path)
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0755)
 		if err != nil {
 			log.WithFields(log.Fields{"reason": err.Error(), "path": path}).Error("failed to open filex")
 			return nil, err
 		}
+
 		osFiles = append(osFiles, file)
 		fileLengths = append(fileLengths, f.Length)
 	}
@@ -118,6 +120,7 @@ func (s *storageWorker) getFile(index int) (int, int, error) {
 	if len(s.files) == 1 {
 		return index, 0, nil
 	}
+
 	var offset int
 	for i, l := range s.fileLengths {
 		offset += l
@@ -127,6 +130,7 @@ func (s *storageWorker) getFile(index int) (int, int, error) {
 		idx := index - (offset - l)
 		return idx, i, nil
 	}
+
 	return 0, 0, errors.New("index not in range")
 }
 
@@ -154,10 +158,12 @@ func (s *storageWorker) write(w io.WriteSeeker, sw storageWork) (int, error) {
 func (s *storageWorker) splitFileBounds(w storageWork, index int, fileIndex int) *storageWork {
 	end := index + len(w.Data)
 	fileLen := s.fileLengths[fileIndex]
+
 	if end > fileLen {
 		split := fileLen - index
-		restData := w.Data[split:]
+		rest := w.Data[split:]
 		w.Data = w.Data[:split]
+
 		log.WithFields(log.Fields{
 			"end":      end,
 			"fileLen":  fileLen,
@@ -165,7 +171,7 @@ func (s *storageWorker) splitFileBounds(w storageWork, index int, fileIndex int)
 			"index":    w.Index,
 			"newIndex": w.Index + split,
 		}).Debug("split storage work")
-		return &storageWork{Index: w.Index + split, Data: restData}
+		return &storageWork{Index: w.Index + split, Data: rest}
 	}
 	return nil
 }
@@ -176,18 +182,20 @@ func (s *storageWorker) Complete() error {
 		log.Debugf("storage work not completed: %d work items left", len(s.queue))
 	}
 
-	ok := true
 	for i := range s.files {
+		ok := false
 		stat, err := s.files[i].Stat()
 		if err != nil {
 			return err
 		}
-		if stat.Size() != int64(s.fileLengths[i]) {
-			ok = false
+
+		if stat.Size() == int64(s.fileLengths[i]) {
+			ok = true
 		}
-	}
-	if !ok {
-		return errors.New("file lengths not matching")
+
+		if !ok {
+			return errors.New("file lengths not matching")
+		}
 	}
 
 	log.Debugf("storage work completed")
